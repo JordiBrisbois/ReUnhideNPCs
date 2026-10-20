@@ -74,6 +74,23 @@ Logs are written to `<game folder>/addons/ReUnhideNPCs/reunhidenpcs.log`.
   render hook, so a freed renderer is never dereferenced. The options window
   shows a live `(N hidden off-screen)` counter next to the checkbox.
 
+## Verifying Hide Off-Screen
+
+The option only applies to characters the game has already loaded. GW2 does not
+instantiate most actors outside the camera, so zero hidden is normal in empty
+areas.
+
+- Next to `Hide Off-Screen`, `(N off-screen, M confirmed hidden)` shows the
+  current pass: `N` = characters classified off-screen and hidden by the rule,
+  `M` = those whose model is actually in the hidden LOD state (`dwLodState == 2`).
+- Test in a crowded area with targets farther than 12 m: turn the camera away.
+  After the 5 second grace period, `N` and `M` rise; turn back and they drop.
+- Toggle `Hide Off-Screen` off: the same characters reappear and the counters
+  go to zero.
+- `Always Show My Owned` entries never count: they bypass the rule.
+- If the render hook is unavailable or the renderer is stale, the addon treats
+  the character as visible instead of hiding it.
+
 ## Building
 
 Requirements: CMake 3.31+, a C++20 compiler, and the `fw` framework checked out

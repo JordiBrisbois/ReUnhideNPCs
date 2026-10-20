@@ -510,7 +510,9 @@ void ui::renderOptions()
     if (profile.HideOffScreen.get())
     {
         ImGui::SameLine();
-        ImGui::TextDisabled("(%u hidden off-screen)", unpc::numOffScreenCulled);
+        ImGui::TextDisabled("(%u off-screen, %u confirmed hidden)",
+                            unpc::numOffScreenCulled,
+                            unpc::numOffScreenConfirmed);
     }
 
     bool hideAllPlayersChanged {}, hideBlockedPlayersChanged {}, hideNonGroupPlayersChanged {}, hideStrangersChanged {},

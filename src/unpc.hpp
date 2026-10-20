@@ -50,6 +50,7 @@ namespace unpc
     extern uint32_t numPlayerOwnedVisible;
     extern uint32_t numPlayerOwnedCulled;
     extern uint32_t numOffScreenCulled;
+    extern uint32_t numOffScreenConfirmed;
     extern uint32_t numNPCVisible;
     extern uint32_t numNPCCulled;
 

@@ -43,6 +43,7 @@ uint32_t unpc::numMountsCulled {};
 uint32_t unpc::numPlayerOwnedVisible {};
 uint32_t unpc::numPlayerOwnedCulled {};
 uint32_t unpc::numOffScreenCulled {};
+uint32_t unpc::numOffScreenConfirmed {};
 uint32_t unpc::numNPCVisible {};
 uint32_t unpc::numNPCCulled {};
 
