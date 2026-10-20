@@ -136,6 +136,11 @@ public:
                 }
             });
 
+    S(bool,
+      AlwaysShowOwnedSelf,
+      true,
+      "Your own player-owned characters (pets, clones, minis) always ignore Max Player-Owned.")
+        .onChanged(forceInvisibility);
     S(int32_t, MaxPlayerOwnedVisible, 0, "Maximum number of visible player-owned characters. (0=unlimited)")
         .onChanged(forceInvisibility)
         .validator(

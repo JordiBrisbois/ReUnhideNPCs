@@ -61,11 +61,16 @@ Logs are written to `<game folder>/addons/ReUnhideNPCs/reunhidenpcs.log`.
 ## Fixes over the original release
 
 - **Player-Owned / All** now also hides characters owned by the local player; `Mine` remains available when `All` is disabled.
+- **Always Show My Owned** (enabled by default) makes your own pets, clones and
+  minis bypass `Max Player-Owned`, so a low limit cannot hide them. Explicit
+  `Mine` / `All` / `Non-Friends` options still take precedence.
 - **Hide off-screen crash**: the world-to-screen routine was called with a
   renderer pointer that could already have been released. ReUnhideNPCs installs
   a detour on the renderer's deleting destructor (vtable slot 0) and clears the
-  saved pointer when the renderer is destroyed, so `isOnScreen()` simply returns
-  false until the client supplies the new renderer.
+  saved pointer when the renderer is destroyed. `isOnScreen()` treats an
+  unknown renderer as "on screen" (keeps characters visible), and a one-second
+  freshness guard ignores a saved pointer that has not been refreshed by the
+  render hook, so a freed renderer is never dereferenced.
 
 ## Building
 

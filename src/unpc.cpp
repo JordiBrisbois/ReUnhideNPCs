@@ -477,7 +477,8 @@ bool unpc::shouldHide(const re::CharacterEntry& c, const bool instanced)
     if (c.isPlayerOwned)
     {
         const auto maxVisible = profile.MaxPlayerOwnedVisible.get();
-        if (maxVisible > 0 && numPlayerOwnedVisible >= static_cast<uint32_t>(maxVisible))
+        if (!(c.isOwnerLocalPlayer && profile.AlwaysShowOwnedSelf.get()) && maxVisible > 0
+            && numPlayerOwnedVisible >= static_cast<uint32_t>(maxVisible))
         {
             REASON("shouldHide: MaxPlayerOwnedVisible");
             return true;
@@ -655,7 +656,8 @@ bool unpc::shouldShow(const re::CharacterEntry& c, const bool instanced)
         }
 
         const auto maxVisible = profile.MaxPlayerOwnedVisible.get();
-        if (maxVisible > 0 && numPlayerOwnedVisible >= static_cast<uint32_t>(maxVisible))
+        if (!(c.isOwnerLocalPlayer && profile.AlwaysShowOwnedSelf.get()) && maxVisible > 0
+            && numPlayerOwnedVisible >= static_cast<uint32_t>(maxVisible))
         {
             REASON("shouldShow: !MaxPlayerOwnedVisible");
             return false;

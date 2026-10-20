@@ -700,6 +700,15 @@ void ui::renderOptions()
         profile.MaxPlayerOwnedVisible.set(maxPlayerOwnedVisible);
     }
 
+    bool alwaysShowOwnedSelf = profile.AlwaysShowOwnedSelf.get();
+    if (checkbox("Always Show My Owned",
+                 "##alwaysShowOwnedSelf",
+                 alwaysShowOwnedSelf,
+                 profile.AlwaysShowOwnedSelf.description().c_str()))
+    {
+        profile.AlwaysShowOwnedSelf.set(alwaysShowOwnedSelf);
+    }
+
     int32_t maxNPCs = profile.MaxNpcs.get();
     if (sliderInt("Max NPCs",
                   "##maxNPCs",
