@@ -78,6 +78,10 @@ Logs are written to `<game folder>/addons/ReUnhideNPCs/reunhidenpcs.log`.
   even when `Max Players`, `Hide All` or off-screen culling would hide them.
 - **Off-Screen Keep** and **Off-Screen Grace** expose the previous hardcoded
   12 m near-distance and 5 s grace period.
+- **Nearest First** (enabled by default) makes `Max Players`, `Max
+  Player-Owned` and `Max NPCs` keep the closest characters instead of the first
+  entries in the game's LOD list. It has no effect when every maximum is
+  unlimited, and always-shown entries still count toward the maximum.
 
 ## Verifying Hide Off-Screen
 
