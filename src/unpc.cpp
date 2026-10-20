@@ -197,6 +197,15 @@ static bool initialize()
         return false;
     }
 
+    {
+        const auto& debug = settings->profile();
+        LOG_INFO("Settings: HidePlayerOwned={} HidePlayerOwnedSelf={} HideNonFriendsOwned={} MaxPlayersVisible={}",
+                 debug.HidePlayerOwned.get(),
+                 debug.HidePlayerOwnedSelf.get(),
+                 debug.HideNonFriendsOwned.get(),
+                 debug.MaxPlayersVisible.get());
+    }
+
     if (auto& profile = settings->profile(); profile.HideOffScreen.get())
     {
         if (!profile.UnhidePlayers.get())
