@@ -1,6 +1,9 @@
 name: Build and Release
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -9,73 +12,84 @@ permissions:
 jobs:
   build-and-release:
     runs-on: windows-latest
+
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Configure CMake
-        run: >
-          cmake -S . -B build
-          -G "Visual Studio 18 2026"
-          -A x64
-          -DCMAKE_CXX_STANDARD=20
-
-      - name: Build
-        run: cmake --build build --config Release
-
-      - name: Read version.txt
-        id: version
+      - name: Determine tag version
+        id: tag
         shell: bash
         run: |
-          VERSION=$(cat build/version.txt)
-          echo "VERSION=v${VERSION}" >> $GITHUB_OUTPUT
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION=""
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
-        with:
-          tag_name: ${{ steps.version.outputs.VERSION }}
-          release_name: ${{ steps.version.outputs.VERSION }}
-          draft: true
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Configure CMake
+        shell: bash
+        run: |
+          EXTRA=()
+          if [[ -n "${{ steps.tag.outputs.VERSION }}" ]]; then
+            EXTRA+=("-DUNPC_VERSION_OVERRIDE=${{ steps.tag.outputs.VERSION }}")
+          fi
+          cmake -S . -B build \
+            -G "Visual Studio 18 2026" \
+            -A x64 \
+            -DCMAKE_CXX_STANDARD=20 \
+            "${EXTRA[@]}"
 
-      - name: Upload DLL to Release
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./build/Release/ReUnhideNPCs.dll
-          asset_name: ReUnhideNPCs.dll
-          asset_content_type: application/octet-stream
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build
+        run: cmake --build build --config Release --parallel
 
-      - name: Upload ArcDps DLL to Release
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./build/Release/ReUnhideNPCs_ArcDps.dll
-          asset_name: ReUnhideNPCs_ArcDps.dll
-          asset_content_type: application/octet-stream
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Read built version
+        id: version
+        shell: pwsh
+        run: |
+          $version = (Get-Content build/version.txt -Raw).Trim()
+          "VERSION=$version" >> $env:GITHUB_OUTPUT
+          if ("${{ github.ref_type }}" -eq "tag") {
+            "TAG=${{ github.ref_name }}" >> $env:GITHUB_OUTPUT
+          } else {
+            "TAG=v$version" >> $env:GITHUB_OUTPUT
+          }
 
-      - name: Upload PDB (debug symbols)
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./build/Release/ReUnhideNPCs.pdb
-          asset_name: ReUnhideNPCs.pdb
-          asset_content_type: application/octet-stream
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify release assets
+        shell: pwsh
+        run: |
+          $files = @(
+            "build/Release/ReUnhideNPCs.dll",
+            "build/Release/ReUnhideNPCs.pdb",
+            "build/Release/ReUnhideNPCs_ArcDps.dll",
+            "build/Release/ReUnhideNPCs_ArcDps.pdb"
+          )
+          foreach ($file in $files) {
+            if (!(Test-Path $file)) { throw "Missing release asset: $file" }
+          }
 
-      - name: Upload ArcDps PDB (debug symbols)
-        uses: actions/upload-release-asset@v1
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./build/Release/ReUnhideNPCs_ArcDps.pdb
-          asset_name: ReUnhideNPCs_ArcDps.pdb
-          asset_content_type: application/octet-stream
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: ReUnhideNPCs-${{ steps.version.outputs.VERSION }}
+          if-no-files-found: error
+          path: |
+            build/Release/ReUnhideNPCs.dll
+            build/Release/ReUnhideNPCs.pdb
+            build/Release/ReUnhideNPCs_ArcDps.dll
+            build/Release/ReUnhideNPCs_ArcDps.pdb
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.TAG }}
+          name: ${{ steps.version.outputs.TAG }}
+          target_commitish: ${{ github.sha }}
+          draft: ${{ github.event_name == 'workflow_dispatch' }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            build/Release/ReUnhideNPCs.dll
+            build/Release/ReUnhideNPCs.pdb
+            build/Release/ReUnhideNPCs_ArcDps.dll
+            build/Release/ReUnhideNPCs_ArcDps.pdb

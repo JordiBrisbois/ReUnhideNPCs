@@ -6,7 +6,8 @@ ReUnhideNPCs keeps them visible.
 Using this, you could even put `Character Model Limit` to `Lowest` and still see all enemies/bosses/NPCs!
 
 This is a maintained continuation of [UnhideNPCs](https://github.com/server-imp/UnhideNPCs)
-by **server-imp**, rebranded and maintained by **Vox**. The original project is
+by **server-imp**, rebranded and maintained by **Vox**
+([JordiBrisbois](https://github.com/JordiBrisbois)). The original project is
 GPLv3; this fork remains GPLv3.
 
 ## Notes
@@ -72,7 +73,7 @@ Logs are written to `<game folder>/addons/ReUnhideNPCs/reunhidenpcs.log`.
   unknown renderer as "on screen" (keeps characters visible), and a one-second
   freshness guard ignores a saved pointer that has not been refreshed by the
   render hook, so a freed renderer is never dereferenced. The options window
-  shows a live `(N hidden off-screen)` counter next to the checkbox.
+  shows live off-screen decision/confirmation counters next to the checkbox.
 
 ## Verifying Hide Off-Screen
 
@@ -90,6 +91,35 @@ areas.
 - `Always Show My Owned` entries never count: they bypass the rule.
 - If the render hook is unavailable or the renderer is stale, the addon treats
   the character as visible instead of hiding it.
+
+## Releases
+
+Pushing a tag such as `v2026.10.20.1456` triggers the
+[release workflow](.github/workflows/build-and-release.yml). It builds both
+Nexus/proxy and ArcDPS variants and publishes:
+
+- `ReUnhideNPCs.dll`
+- `ReUnhideNPCs.pdb`
+- `ReUnhideNPCs_ArcDps.dll`
+- `ReUnhideNPCs_ArcDps.pdb`
+
+The tag must match the version format `vYYYY.M.D.HHMM`; the workflow passes it
+to CMake so the DLL metadata matches the release tag. A manual
+`workflow_dispatch` run builds the current timestamped version and creates a
+draft release.
+
+Nexus reads `UpdateLink` from the addon metadata and uses the latest published
+release, so keep the `ReUnhideNPCs.dll` asset name unchanged. ArcDPS users take
+`ReUnhideNPCs_ArcDps.dll` from the same release.
+
+## Credits
+
+- Original [UnhideNPCs](https://github.com/server-imp/UnhideNPCs) by
+  **server-imp**: addon design, in-game UI and GW2 structures.
+- [fw](https://github.com/server-imp/fw) framework by **server-imp**.
+- ReUnhideNPCs maintenance, GW2 structure recovery and fixes by **Vox**
+  ([JordiBrisbois](https://github.com/JordiBrisbois)).
+- Both projects are distributed under the GNU GPLv3.
 
 ## Building
 
