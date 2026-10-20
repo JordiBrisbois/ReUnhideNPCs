@@ -74,11 +74,6 @@ struct MumbleContext
         return uiState & (1 << 3);
     }
 
-    [[nodiscard]] bool isCompetitiveMode() const
-    {
-        return uiState & (1 << 4);
-    }
-
     [[nodiscard]] bool isTextboxFocused() const
     {
         return uiState & (1 << 5);

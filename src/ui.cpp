@@ -356,11 +356,8 @@ void ui::renderOptions()
     const auto& settings = *unpc::settings;
     const auto& profile  = settings.profile();
 
-    if (!unpc::mumbleLink || unpc::mumbleLink->getContext().isCompetitiveMode())
+    if (!unpc::mumbleLink)
     {
-        ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 100, 100, 255));
-        ImGui::Text("Disabled in Competitive");
-        ImGui::PopStyleColor();
         return;
     }
 
