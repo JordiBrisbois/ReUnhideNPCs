@@ -1,0 +1,81 @@
+name: Build and Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure CMake
+        run: >
+          cmake -S . -B build
+          -G "Visual Studio 18 2026"
+          -A x64
+          -DCMAKE_CXX_STANDARD=20
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Read version.txt
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(cat build/version.txt)
+          echo "VERSION=v${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.VERSION }}
+          release_name: ${{ steps.version.outputs.VERSION }}
+          draft: true
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload DLL to Release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build/Release/ReUnhideNPCs.dll
+          asset_name: ReUnhideNPCs.dll
+          asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload ArcDps DLL to Release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build/Release/ReUnhideNPCs_ArcDps.dll
+          asset_name: ReUnhideNPCs_ArcDps.dll
+          asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload PDB (debug symbols)
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build/Release/ReUnhideNPCs.pdb
+          asset_name: ReUnhideNPCs.pdb
+          asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload ArcDps PDB (debug symbols)
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build/Release/ReUnhideNPCs_ArcDps.pdb
+          asset_name: ReUnhideNPCs_ArcDps.pdb
+          asset_content_type: application/octet-stream
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
