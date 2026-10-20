@@ -68,7 +68,7 @@ public:
 
     S(bool, HidePlayers, false, "Hide all players (Not yourself)").onChanged(forceInvisibility);
 
-    S(bool, HidePlayerOwned, false, "Hide all characters owned by players, except yourself (pets, clones, minis etc)")
+    S(bool, HidePlayerOwned, false, "Hide all characters owned by players, including yourself (pets, clones, minis etc)")
         .onChanged(forceInvisibility);
 
     S(bool, HideBlockedPlayers, true, "Hide any players that you have blocked").onChanged(forceInvisibility);

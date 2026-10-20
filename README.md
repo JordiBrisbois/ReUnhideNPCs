@@ -11,7 +11,7 @@ GPLv3; this fork remains GPLv3.
 
 ## Notes
 
-ReUnhideNPCs does nothing while in PvP or WvW.
+The previous competitive-mode guard has been removed: the add-on also applies in PvP and WvW.
 
 The add-on is built against the Guild Wars 2 client structures recovered from the
 original release. A game update that changes those structures requires updating
@@ -60,6 +60,7 @@ Logs are written to `<game folder>/addons/ReUnhideNPCs/reunhidenpcs.log`.
 
 ## Fixes over the original release
 
+- **Player-Owned / All** now also hides characters owned by the local player; `Mine` remains available when `All` is disabled.
 - **Hide off-screen crash**: the world-to-screen routine was called with a
   renderer pointer that could already have been released. ReUnhideNPCs installs
   a detour on the renderer's deleting destructor (vtable slot 0) and clears the

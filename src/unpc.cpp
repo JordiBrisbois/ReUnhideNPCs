@@ -486,7 +486,7 @@ bool unpc::shouldHide(const re::CharacterEntry& c, const bool instanced)
             return true;
         }
 
-        if (profile.HidePlayerOwned.get() && !c.isOwnerLocalPlayer)
+        if (profile.HidePlayerOwned.get())
         {
             REASON("shouldHide: HidePlayerOwned");
             return true;
@@ -664,7 +664,7 @@ bool unpc::shouldShow(const re::CharacterEntry& c, const bool instanced)
             return false;
         }
 
-        if (profile.HidePlayerOwned.get() && !c.isOwnerLocalPlayer)
+        if (profile.HidePlayerOwned.get())
         {
             REASON("shouldShow: !HidePlayerOwned");
             return false;
