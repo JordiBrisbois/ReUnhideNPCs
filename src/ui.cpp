@@ -768,6 +768,16 @@ void ui::renderOptions()
     {
         profile.MaxNpcs.set(maxNPCs);
     }
+
+    bool prioritizeNearest = profile.PrioritizeNearest.get();
+    if (checkbox("Nearest First",
+                 "##prioritizeNearest",
+                 prioritizeNearest,
+                 profile.PrioritizeNearest.description().c_str()))
+    {
+        profile.PrioritizeNearest.set(prioritizeNearest);
+    }
+
     ImGui::NewLine();
 
     int instanceBehaviour = profile.InstanceBehaviour.get();

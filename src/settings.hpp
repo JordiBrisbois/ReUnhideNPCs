@@ -187,6 +187,12 @@ public:
                 }
             });
 
+    S(bool,
+      PrioritizeNearest,
+      true,
+      "When a maximum is active, keep the closest characters instead of the first entries in the game's LOD list.")
+        .onChanged(forceInvisibility);
+
     S(int32_t, InstanceBehaviour, 0, "0: Always On\n1: Disabled in instances\n2: Instances only")
         .onChanged(forceInvisibility)
         .validator(
