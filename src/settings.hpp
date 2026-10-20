@@ -26,6 +26,11 @@ public:
     S(bool, AlwaysShowTarget, true, "Always show the targeted character, even if it would be hidden.")
         .onChanged(forceInvisibility);
 
+    S(bool, AlwaysShowGroup, true, "Always show party and squad members, even if they would be hidden.")
+        .onChanged(forceInvisibility);
+    S(bool, AlwaysShowFriends, true, "Always show friends, even if they would be hidden.")
+        .onChanged(forceInvisibility);
+
     S(bool, UnhideLowQuality, false, "Use basic models when unhiding all characters").onChanged(forceInvisibility);
     S(bool, UnhideMountLowQuality, false, "Use basic models when unhiding mounts").onChanged(forceInvisibility);
 
@@ -117,6 +122,17 @@ public:
     S(bool, HidePlayersInCombat, false, "Hide players when you are in combat").onChanged(forceInvisibility);
 
     S(bool, HideOffScreen, true, "Hide any off-screen characters").onChanged(forceInvisibility);
+
+    S(int32_t,
+      OffScreenKeepDistance,
+      12,
+      "Characters within this distance stay visible even when off-screen.")
+        .onChanged(forceInvisibility);
+    S(int32_t,
+      OffScreenGraceMs,
+      5000,
+      "How long an off-screen character stays visible after it was last on screen.")
+        .onChanged(forceInvisibility);
 
     S(bool, HidePlayerOwnedInCombat, false, "Hide player-owned characters when you are in combat")
         .onChanged(forceInvisibility);

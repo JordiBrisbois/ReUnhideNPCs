@@ -375,10 +375,13 @@ void ui::renderOptions()
     separatorText("Show");
 
     bool unhideNPCsChanged {}, unhidePlayersChanged {}, playerOwnedChanged {}, alwaysShowTargetChanged {};
+    bool alwaysShowGroupChanged {}, alwaysShowFriendsChanged {};
     bool unhideNPCs       = profile.UnhideNPCs.get();
     bool unhidePlayers    = profile.UnhidePlayers.get();
     bool playerOwned      = profile.PlayerOwned.get();
     bool alwaysShowTarget = profile.AlwaysShowTarget.get();
+    bool alwaysShowGroup  = profile.AlwaysShowGroup.get();
+    bool alwaysShowFriends = profile.AlwaysShowFriends.get();
 
     bool hideOffScreen = profile.HideOffScreen.get();
 
@@ -392,7 +395,15 @@ void ui::renderOptions()
                 {      "Target",
                  profile.AlwaysShowTarget.description().c_str(),
                  &alwaysShowTarget,
-                 &alwaysShowTargetChanged                                                                             }
+                 &alwaysShowTargetChanged                                                                             },
+                {       "Group",
+                 profile.AlwaysShowGroup.description().c_str(),
+                 &alwaysShowGroup,
+                 &alwaysShowGroupChanged                                                                              },
+                {     "Friends",
+                 profile.AlwaysShowFriends.description().c_str(),
+                 &alwaysShowFriends,
+                 &alwaysShowFriendsChanged                                                                            }
     }))
     {
         if (unhideNPCsChanged)
@@ -425,6 +436,14 @@ void ui::renderOptions()
         if (alwaysShowTargetChanged)
         {
             profile.AlwaysShowTarget.set(alwaysShowTarget);
+        }
+        if (alwaysShowGroupChanged)
+        {
+            profile.AlwaysShowGroup.set(alwaysShowGroup);
+        }
+        if (alwaysShowFriendsChanged)
+        {
+            profile.AlwaysShowFriends.set(alwaysShowFriends);
         }
     }
     ImGui::NewLine();
@@ -513,6 +532,30 @@ void ui::renderOptions()
         ImGui::TextDisabled("(%u off-screen, %u confirmed hidden)",
                             unpc::numOffScreenCulled,
                             unpc::numOffScreenConfirmed);
+    }
+
+    int32_t offScreenKeepDistance = profile.OffScreenKeepDistance.get();
+    if (sliderInt("Off-Screen Keep",
+                  "##offScreenKeepDistance",
+                  offScreenKeepDistance,
+                  0,
+                  50,
+                  offScreenKeepDistance == 0 ? "0 m" : "%d m",
+                  profile.OffScreenKeepDistance.description().c_str()))
+    {
+        profile.OffScreenKeepDistance.set(offScreenKeepDistance);
+    }
+
+    float offScreenGrace = static_cast<float>(profile.OffScreenGraceMs.get()) / 1000.0f;
+    if (sliderFloat("Off-Screen Grace",
+                    "##offScreenGraceMs",
+                    offScreenGrace,
+                    0.0f,
+                    15.0f,
+                    offScreenGrace == 0.0f ? "Instant" : "%.1f s",
+                    profile.OffScreenGraceMs.description().c_str()))
+    {
+        profile.OffScreenGraceMs.set(static_cast<int32_t>(offScreenGrace * 1000.0f + 0.5f));
     }
 
     bool hideAllPlayersChanged {}, hideBlockedPlayersChanged {}, hideNonGroupPlayersChanged {}, hideStrangersChanged {},

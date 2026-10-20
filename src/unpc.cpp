@@ -401,9 +401,27 @@ bool unpc::shouldHide(const re::CharacterEntry& c, const bool instanced)
 
     const auto& profile = settings->profile();
 
+    if (c.isTarget && profile.AlwaysShowTarget.get())
+    {
+        REASON("shouldHide: AlwaysShowTarget");
+        return false;
+    }
+
     if (c.isPlayerOwned && c.isOwnerLocalPlayer && profile.AlwaysShowOwnedSelf.get())
     {
         REASON("shouldHide: AlwaysShowOwnedSelf");
+        return false;
+    }
+
+    if (profile.AlwaysShowGroup.get() && (c.isPartyMember || c.isSquadMember))
+    {
+        REASON("shouldHide: AlwaysShowGroup");
+        return false;
+    }
+
+    if (profile.AlwaysShowFriends.get() && c.isFriend)
+    {
+        REASON("shouldHide: AlwaysShowFriends");
         return false;
     }
 
@@ -412,12 +430,6 @@ bool unpc::shouldHide(const re::CharacterEntry& c, const bool instanced)
         ++numOffScreenCulled;
         REASON("shouldHide: HideOffScreen");
         return true;
-    }
-
-    if (c.isTarget && profile.AlwaysShowTarget.get())
-    {
-        REASON("shouldHide: !AlwaysShowTarget");
-        return false;
     }
 
     if (profile.MaximumDistance.get() > 0 && c.distance >= profile.MaximumDistance.get())
@@ -575,9 +587,27 @@ bool unpc::shouldShow(const re::CharacterEntry& c, const bool instanced)
 
     const auto& profile = settings->profile();
 
+    if (c.isTarget && profile.AlwaysShowTarget.get())
+    {
+        REASON("shouldShow: AlwaysShowTarget");
+        return true;
+    }
+
     if (c.isPlayerOwned && c.isOwnerLocalPlayer && profile.AlwaysShowOwnedSelf.get())
     {
         REASON("shouldShow: AlwaysShowOwnedSelf");
+        return true;
+    }
+
+    if (profile.AlwaysShowGroup.get() && (c.isPartyMember || c.isSquadMember))
+    {
+        REASON("shouldShow: AlwaysShowGroup");
+        return true;
+    }
+
+    if (profile.AlwaysShowFriends.get() && c.isFriend)
+    {
+        REASON("shouldShow: AlwaysShowFriends");
         return true;
     }
 
@@ -586,12 +616,6 @@ bool unpc::shouldShow(const re::CharacterEntry& c, const bool instanced)
         ++numOffScreenCulled;
         REASON("shouldShow: !HideOffScreen");
         return false;
-    }
-
-    if (c.isTarget && profile.AlwaysShowTarget.get())
-    {
-        REASON("shouldShow: AlwaysShowTarget");
-        return true;
     }
 
     if (profile.MaximumDistance.get() > 0 && c.distance >= profile.MaximumDistance.get())
