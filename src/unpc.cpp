@@ -1,6 +1,9 @@
 #include "unpc.hpp"
 #include <version.hpp>
 
+#include <fstream>
+#include <iterator>
+
 #include "hook.hpp"
 #include "hotkey.hpp"
 #include "integration/nexus.hpp"
@@ -164,7 +167,30 @@ static bool initialize()
         }
     }
 
-    settings.emplace(std::filesystem::current_path() / "addons" / "ReUnhideNPCs" / "settings.json");
+    const auto settingsPath =
+        std::filesystem::current_path() / "addons" / "ReUnhideNPCs" / "settings.json";
+
+    // The previous community attempt used a different schema. Keep its file
+    // for reference, but start from known-good defaults instead of inheriting
+    // stale values (for example MaxPlayersVisible=20, which makes players
+    // flicker in busy maps).
+    if (std::filesystem::exists(settingsPath))
+    {
+        std::ifstream in(settingsPath);
+        const std::string content(std::istreambuf_iterator<char>(in), {});
+
+        if (content.find("\"RenderDebugCircles\"") != std::string::npos
+            || content.find("\"ReUnhideNPCs\":") != std::string::npos)
+        {
+            std::error_code ec;
+            const auto archived = settingsPath.string() + ".old-attempt";
+            std::filesystem::remove(archived, ec);
+            std::filesystem::rename(settingsPath, archived, ec);
+            LOG_INFO("Archived settings from the previous implementation");
+        }
+    }
+
+    settings.emplace(settingsPath);
     if (!settings->loaded())
     {
         LOG_ERR("Settings Failed");
@@ -732,11 +758,8 @@ void unpc::start()
         return;
     }
 
-#ifdef BUILDING_ON_GITHUB
+    // Keep the add-on quiet in Nexus: no per-frame or framework debug output.
     auto logLevel = logging::LogLevel::Info;
-#else
-    auto logLevel = logging::LogLevel::Debug;
-#endif
 
     logger.emplace(
         "ReUnhideNPCs", std::filesystem::current_path() / "addons" / "ReUnhideNPCs" / "reunhidenpcs.log", logLevel);
