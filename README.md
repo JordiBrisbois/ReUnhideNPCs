@@ -61,16 +61,18 @@ Logs are written to `<game folder>/addons/ReUnhideNPCs/reunhidenpcs.log`.
 ## Fixes over the original release
 
 - **Player-Owned / All** now also hides characters owned by the local player; `Mine` remains available when `All` is disabled.
-- **Always Show My Owned** (enabled by default) makes your own pets, clones and
-  minis bypass `Max Player-Owned`, so a low limit cannot hide them. Explicit
-  `Mine` / `All` / `Non-Friends` options still take precedence.
+- **Always Show My Owned** (enabled by default) makes your own pets, clones,
+  minis and jade mech bypass every hide option: `All`, `Mine`, `Max
+  Player-Owned`, `Non-Friends` and off-screen culling. It is evaluated before
+  all other hide rules.
 - **Hide off-screen crash**: the world-to-screen routine was called with a
   renderer pointer that could already have been released. ReUnhideNPCs installs
   a detour on the renderer's deleting destructor (vtable slot 0) and clears the
   saved pointer when the renderer is destroyed. `isOnScreen()` treats an
   unknown renderer as "on screen" (keeps characters visible), and a one-second
   freshness guard ignores a saved pointer that has not been refreshed by the
-  render hook, so a freed renderer is never dereferenced.
+  render hook, so a freed renderer is never dereferenced. The options window
+  shows a live `(N hidden off-screen)` counter next to the checkbox.
 
 ## Building
 

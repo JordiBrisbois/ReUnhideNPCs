@@ -42,6 +42,7 @@ uint32_t unpc::numMountsVisible {};
 uint32_t unpc::numMountsCulled {};
 uint32_t unpc::numPlayerOwnedVisible {};
 uint32_t unpc::numPlayerOwnedCulled {};
+uint32_t unpc::numOffScreenCulled {};
 uint32_t unpc::numNPCVisible {};
 uint32_t unpc::numNPCCulled {};
 
@@ -399,8 +400,15 @@ bool unpc::shouldHide(const re::CharacterEntry& c, const bool instanced)
 
     const auto& profile = settings->profile();
 
+    if (c.isPlayerOwned && c.isOwnerLocalPlayer && profile.AlwaysShowOwnedSelf.get())
+    {
+        REASON("shouldHide: AlwaysShowOwnedSelf");
+        return false;
+    }
+
     if (!c.isOnScreen && profile.HideOffScreen.get())
     {
+        ++numOffScreenCulled;
         REASON("shouldHide: HideOffScreen");
         return true;
     }
@@ -477,8 +485,7 @@ bool unpc::shouldHide(const re::CharacterEntry& c, const bool instanced)
     if (c.isPlayerOwned)
     {
         const auto maxVisible = profile.MaxPlayerOwnedVisible.get();
-        if (!(c.isOwnerLocalPlayer && profile.AlwaysShowOwnedSelf.get()) && maxVisible > 0
-            && numPlayerOwnedVisible >= static_cast<uint32_t>(maxVisible))
+        if (maxVisible > 0 && numPlayerOwnedVisible >= static_cast<uint32_t>(maxVisible))
         {
             REASON("shouldHide: MaxPlayerOwnedVisible");
             return true;
@@ -566,8 +573,16 @@ bool unpc::shouldShow(const re::CharacterEntry& c, const bool instanced)
     REASON(nullptr);
 
     const auto& profile = settings->profile();
+
+    if (c.isPlayerOwned && c.isOwnerLocalPlayer && profile.AlwaysShowOwnedSelf.get())
+    {
+        REASON("shouldShow: AlwaysShowOwnedSelf");
+        return true;
+    }
+
     if (!c.isOnScreen && profile.HideOffScreen.get())
     {
+        ++numOffScreenCulled;
         REASON("shouldShow: !HideOffScreen");
         return false;
     }
@@ -656,8 +671,7 @@ bool unpc::shouldShow(const re::CharacterEntry& c, const bool instanced)
         }
 
         const auto maxVisible = profile.MaxPlayerOwnedVisible.get();
-        if (!(c.isOwnerLocalPlayer && profile.AlwaysShowOwnedSelf.get()) && maxVisible > 0
-            && numPlayerOwnedVisible >= static_cast<uint32_t>(maxVisible))
+        if (maxVisible > 0 && numPlayerOwnedVisible >= static_cast<uint32_t>(maxVisible))
         {
             REASON("shouldShow: !MaxPlayerOwnedVisible");
             return false;

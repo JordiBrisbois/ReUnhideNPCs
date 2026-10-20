@@ -510,6 +510,12 @@ void ui::renderOptions()
         profile.HideOffScreen.set(hideOffScreen);
     }
 
+    if (profile.HideOffScreen.get())
+    {
+        ImGui::SameLine();
+        ImGui::TextDisabled("(%u hidden off-screen)", unpc::numOffScreenCulled);
+    }
+
     bool hideAllPlayersChanged {}, hideBlockedPlayersChanged {}, hideNonGroupPlayersChanged {}, hideStrangersChanged {},
         hideNonGuildPlayersChanged {}, hideNonFriendPlayersChanged {};
     bool hidePlayers         = profile.HidePlayers.get();
