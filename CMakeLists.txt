@@ -5,6 +5,10 @@ set(CMAKE_CXX_STANDARD 20)
 
 set(UNPC_VERSION_OVERRIDE "" CACHE STRING "Override the generated version (YYYY.M.D.HHMM)")
 
+# CI release builds pin the ReUnhideNPCs-RE commit they compile, so a tag maps
+# to an exact source state. Local builds ignore this and use ../ReUnhideNPCs-RE.
+set(UNPC_RE_COMMIT "" CACHE STRING "ReUnhideNPCs-RE commit to build against")
+
 if (UNPC_VERSION_OVERRIDE)
     if (NOT UNPC_VERSION_OVERRIDE MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)$")
         message(FATAL_ERROR "UNPC_VERSION_OVERRIDE must be YYYY.M.D.HHMM, got '${UNPC_VERSION_OVERRIDE}'")
@@ -43,11 +47,22 @@ message(STATUS "Building on GitHub Actions: ${BUILDING_ON_GITHUB}")
 include(FetchContent)
 
 if (BUILDING_ON_GITHUB)
+    # A commit SHA cannot be fetched with a shallow clone.
+    if (UNPC_RE_COMMIT)
+        set(UNPC_RE_TAG "${UNPC_RE_COMMIT}")
+        set(UNPC_RE_SHALLOW FALSE)
+    else ()
+        set(UNPC_RE_TAG "main")
+        set(UNPC_RE_SHALLOW TRUE)
+    endif ()
+
+    message(STATUS "Building ReUnhideNPCs-RE at ${UNPC_RE_TAG}")
+
     FetchContent_Declare(
             ReUnhideNPCs_RE
             GIT_REPOSITORY "https://github.com/JordiBrisbois/ReUnhideNPCs-RE.git"
-            GIT_TAG "main"
-            GIT_SHALLOW TRUE
+            GIT_TAG "${UNPC_RE_TAG}"
+            GIT_SHALLOW ${UNPC_RE_SHALLOW}
     )
     FetchContent_MakeAvailable(ReUnhideNPCs_RE)
     set(REUNHIDENPCS_RE_SOURCE_DIR "${reunhidenpcs_re_SOURCE_DIR}")
