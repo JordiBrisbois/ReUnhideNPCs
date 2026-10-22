@@ -59,6 +59,12 @@ Logs are written to `<game folder>/addons/ReUnhideNPCs/reunhidenpcs.log`.
 
 ## Fixes over the original release
 
+- **Frame cost**: the 50 ms character pass no longer issues a `VirtualQuery`
+  for every pointer it resolves (~1400 syscalls per pass in a crowded WvW map,
+  4-5 ms on the render thread). Client reads are fault-guarded instead, which
+  costs one load per pointer and cannot dereference a released page. The pass
+  measures a few microseconds with 220 characters. See
+  [PERFORMANCE.md](https://github.com/JordiBrisbois/ReUnhideNPCs-RE/blob/main/PERFORMANCE.md).
 - **Player-Owned / All** now also hides characters owned by the local player; `Mine` remains available when `All` is disabled.
 - **Always Show My Owned** (enabled by default) makes your own pets, clones,
   minis and jade mech bypass every hide option: `All`, `Mine`, `Max

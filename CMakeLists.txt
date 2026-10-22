@@ -201,12 +201,12 @@ function(add_reunhidenpcs_dll TARGET_NAME IMGUI_TARGET OUTPUT_NAME)
                 ${REUNHIDENPCS_RE_SOURCE_DIR}/src
                 ${fw_SOURCE_DIR}/include
         )
-        file(GLOB SRC_RE "${REUNHIDENPCS_RE_SOURCE_DIR}/src/*.cpp")
+        file(GLOB SRC_RE CONFIGURE_DEPENDS "${REUNHIDENPCS_RE_SOURCE_DIR}/src/*.cpp")
     else ()
         target_include_directories(${TARGET_NAME} PRIVATE
                 ${CMAKE_CURRENT_SOURCE_DIR}/../ReUnhideNPCs-RE/src
         )
-        file(GLOB SRC_RE "${CMAKE_CURRENT_SOURCE_DIR}/../ReUnhideNPCs-RE/src/*.cpp")
+        file(GLOB SRC_RE CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../ReUnhideNPCs-RE/src/*.cpp")
     endif ()
 
     target_sources(${TARGET_NAME} PRIVATE ${SRC_RE})
