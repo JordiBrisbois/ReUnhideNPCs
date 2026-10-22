@@ -7,6 +7,8 @@
 #include "hotkey.hpp"
 #include "settings.hpp"
 
+#include <array>
+
 namespace unpc
 {
     enum class EMode : int32_t
@@ -54,6 +56,60 @@ namespace unpc
     extern uint32_t numNPCVisible;
     extern uint32_t numNPCCulled;
 
+    // Why a character ended up hidden, so the overlay can show which rule is
+    // actually doing the work instead of leaving the user to guess.
+    enum class EHideReason : uint32_t
+    {
+        None = 0,
+        NotUnhidden,
+        OffScreen,
+        MaximumDistance,
+        MaxPlayers,
+        MaxPlayerOwned,
+        MaxNpcs,
+        HidePlayers,
+        HidePlayerOwned,
+        NonFriends,
+        NonFriendsOwned,
+        Blocked,
+        BlockedOwned,
+        NonGuild,
+        NonGuildOwned,
+        NonGroup,
+        NonGroupOwned,
+        Strangers,
+        StrangersOwned,
+        InCombat,
+        InCombatOwned,
+        OwnedInstances,
+        OwnedSelf,
+        Rank,
+        AttackableFilter,
+        RiderHidden,
+        Count
+    };
+
+    constexpr auto hideReasonCount = static_cast<size_t>(EHideReason::Count);
+
+    const char* hideReasonName(EHideReason reason);
+
+    // Rule responsible for the current decision. Written by shouldHide() /
+    // shouldShow(), read by the character pass and by the overlay.
+    extern EHideReason hideReason;
+
+    // Per-rule hidden counter for the current pass.
+    extern std::array<uint32_t, hideReasonCount> hiddenByReason;
+
+    // Cost of the last character pass, in tenths of a microsecond, and how many
+    // models it looked at.
+    extern uint32_t passMicrosX10;
+    extern uint32_t passCharacters;
+
+    // False when the start-up self-check found that the client structures no
+    // longer match the offsets this build was compiled with. The add-on then
+    // leaves the client alone instead of writing to the wrong fields.
+    extern bool clientLayoutOk;
+
     struct DebugRenderEntry
     {
         vec2        screenPos;
@@ -75,9 +131,6 @@ namespace unpc
     extern std::vector<DebugRenderEntry> debugRenderEntries;
 
     void onHookTick();
-
-    // used for the debug renderer to display reason why a character is displayed/hidden
-    extern const char* reason;
 
     // This function may be called second, returning true means the character will be forced invisible
     bool shouldHide(const re::CharacterEntry& c, bool instanced);

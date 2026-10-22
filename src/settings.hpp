@@ -30,9 +30,31 @@ public:
         .onChanged(forceInvisibility);
     S(bool, AlwaysShowFriends, true, "Always show friends, even if they would be hidden.")
         .onChanged(forceInvisibility);
+    S(bool,
+      AlwaysShowAttackable,
+      false,
+      "Never hide a character you can attack (hostile players and NPCs). Evaluated before every hide rule.")
+        .onChanged(forceInvisibility);
 
     S(bool, UnhideLowQuality, false, "Use basic models when unhiding all characters").onChanged(forceInvisibility);
     S(bool, UnhideMountLowQuality, false, "Use basic models when unhiding mounts").onChanged(forceInvisibility);
+    S(int32_t,
+      BasicModelDistance,
+      0,
+      "Characters beyond this distance switch to basic models even when they stay visible. (0=never)")
+        .onChanged(forceInvisibility)
+        .validator(
+            [](auto& value)
+            {
+                if (value < 0)
+                {
+                    value = 0;
+                }
+                else if (value > 1000)
+                {
+                    value = 1000;
+                }
+            });
 
     S(int32_t, MinimumRank, 0, "Only NPCs that have at least this rank get unhidden.")
         .onChanged(forceInvisibility)
@@ -191,6 +213,13 @@ public:
       PrioritizeNearest,
       true,
       "When a maximum is active, keep the closest characters instead of the first entries in the game's LOD list.")
+        .onChanged(forceInvisibility);
+
+    S(bool,
+      PrioritizeRank,
+      false,
+      "When a maximum is active, keep higher-ranked NPCs first (bosses before trash). Distance decides within the same "
+      "rank.")
         .onChanged(forceInvisibility);
 
     S(int32_t, InstanceBehaviour, 0, "0: Always On\n1: Disabled in instances\n2: Instances only")

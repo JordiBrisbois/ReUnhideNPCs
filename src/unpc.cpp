@@ -47,6 +47,75 @@ uint32_t unpc::numOffScreenConfirmed {};
 uint32_t unpc::numNPCVisible {};
 uint32_t unpc::numNPCCulled {};
 
+unpc::EHideReason                        unpc::hideReason { unpc::EHideReason::None };
+std::array<uint32_t, unpc::hideReasonCount> unpc::hiddenByReason {};
+uint32_t                                 unpc::passMicrosX10 {};
+uint32_t                                 unpc::passCharacters {};
+bool                                     unpc::clientLayoutOk { true };
+
+const char* unpc::hideReasonName(const EHideReason reason)
+{
+    switch (reason)
+    {
+    case EHideReason::None:
+        return "none";
+    case EHideReason::NotUnhidden:
+        return "not unhidden";
+    case EHideReason::OffScreen:
+        return "off-screen";
+    case EHideReason::MaximumDistance:
+        return "distance";
+    case EHideReason::MaxPlayers:
+        return "max players";
+    case EHideReason::MaxPlayerOwned:
+        return "max owned";
+    case EHideReason::MaxNpcs:
+        return "max NPCs";
+    case EHideReason::HidePlayers:
+        return "hide players";
+    case EHideReason::HidePlayerOwned:
+        return "hide owned";
+    case EHideReason::NonFriends:
+        return "non-friends";
+    case EHideReason::NonFriendsOwned:
+        return "non-friends owned";
+    case EHideReason::Blocked:
+        return "blocked";
+    case EHideReason::BlockedOwned:
+        return "blocked owned";
+    case EHideReason::NonGuild:
+        return "non-guild";
+    case EHideReason::NonGuildOwned:
+        return "non-guild owned";
+    case EHideReason::NonGroup:
+        return "non-group";
+    case EHideReason::NonGroupOwned:
+        return "non-group owned";
+    case EHideReason::Strangers:
+        return "strangers";
+    case EHideReason::StrangersOwned:
+        return "strangers owned";
+    case EHideReason::InCombat:
+        return "in combat";
+    case EHideReason::InCombatOwned:
+        return "in combat owned";
+    case EHideReason::OwnedInstances:
+        return "instances";
+    case EHideReason::OwnedSelf:
+        return "my own";
+    case EHideReason::Rank:
+        return "rank";
+    case EHideReason::AttackableFilter:
+        return "attackable filter";
+    case EHideReason::RiderHidden:
+        return "hidden rider";
+    case EHideReason::Count:
+        break;
+    }
+
+    return "?";
+}
+
 std::shared_mutex             unpc::debugRenderMutex {};
 std::vector<DebugRenderEntry> unpc::debugRenderEntries {};
 
@@ -402,14 +471,6 @@ void unpc::onHookTick()
     }
 }
 
-const char* unpc::reason = "NONE";
-
-#ifndef BUILDING_ON_GITHUB
-#define REASON(text) unpc::reason = text
-#else
-#define REASON(text)
-#endif
-
 bool unpc::shouldHide(const re::CharacterEntry& c, const bool instanced)
 {
     if (!settings)
@@ -417,44 +478,45 @@ bool unpc::shouldHide(const re::CharacterEntry& c, const bool instanced)
         return false;
     }
 
-    REASON(nullptr);
+    hideReason = EHideReason::None;
 
     const auto& profile = settings->profile();
 
     if (c.isTarget && profile.AlwaysShowTarget.get())
     {
-        REASON("shouldHide: AlwaysShowTarget");
         return false;
     }
 
     if (c.isPlayerOwned && c.isOwnerLocalPlayer && profile.AlwaysShowOwnedSelf.get())
     {
-        REASON("shouldHide: AlwaysShowOwnedSelf");
         return false;
     }
 
     if (profile.AlwaysShowGroup.get() && (c.isPartyMember || c.isSquadMember))
     {
-        REASON("shouldHide: AlwaysShowGroup");
         return false;
     }
 
     if (profile.AlwaysShowFriends.get() && c.isFriend)
     {
-        REASON("shouldHide: AlwaysShowFriends");
+        return false;
+    }
+
+    if (profile.AlwaysShowAttackable.get() && c.isAttackable)
+    {
         return false;
     }
 
     if (!c.isOnScreen && profile.HideOffScreen.get())
     {
         ++numOffScreenCulled;
-        REASON("shouldHide: HideOffScreen");
+        hideReason = EHideReason::OffScreen;
         return true;
     }
 
     if (profile.MaximumDistance.get() > 0 && c.distance >= profile.MaximumDistance.get())
     {
-        REASON("shouldHide: MaximumDistance");
+        hideReason = EHideReason::MaximumDistance;
         return true;
     }
 
@@ -463,55 +525,54 @@ bool unpc::shouldHide(const re::CharacterEntry& c, const bool instanced)
         const auto maxVisible = profile.MaxPlayersVisible.get();
         if (maxVisible > 0 && numPlayersVisible >= static_cast<uint32_t>(maxVisible))
         {
-            REASON("shouldHide: MaxPlayersVisible");
+            hideReason = EHideReason::MaxPlayers;
             return true;
         }
 
         if (profile.HidePlayers.get())
         {
-            REASON("shouldHide: HidePlayers");
+            hideReason = EHideReason::HidePlayers;
             return true;
         }
 
         if (profile.HideNonFriends.get() && !c.isFriend)
         {
-            REASON("shouldHide: HideNonFriends");
+            hideReason = EHideReason::NonFriends;
             return true;
         }
 
         if (profile.HideBlockedPlayers.get() && c.isBlocked)
         {
-            REASON("shouldHide: HideBlockedPlayers");
+            hideReason = EHideReason::Blocked;
             return true;
         }
 
         if (profile.HideNonGuildMembers.get() && !(c.isActiveGuildMember || c.isGuildMember))
         {
-            REASON("shouldHide: HideNonGuildMembers");
+            hideReason = EHideReason::NonGuild;
             return true;
         }
 
         const bool groupMember = c.isPartyMember || c.isSquadMember;
         if (profile.HideNonGroupMembers.get() && !groupMember)
         {
-            REASON("shouldHide: HideNonGroupMembers");
+            hideReason = EHideReason::NonGroup;
             return true;
         }
 
         if (profile.HideStrangers.get() && !c.isFriend && !c.isPartyMember && !c.isSquadMember
             && !c.isActiveGuildMember)
         {
-            REASON("shouldHide: HideStrangers");
+            hideReason = EHideReason::Strangers;
             return true;
         }
 
         if (profile.HidePlayersInCombat.get() && mumbleLink && mumbleLink->getContext().isInCombat())
         {
-            REASON("shouldHide: HidePlayersInCombat");
+            hideReason = EHideReason::InCombat;
             return true;
         }
 
-        REASON("shouldHide: !c.isPlayer");
         return false;
     }
 
@@ -520,79 +581,77 @@ bool unpc::shouldHide(const re::CharacterEntry& c, const bool instanced)
         const auto maxVisible = profile.MaxPlayerOwnedVisible.get();
         if (maxVisible > 0 && numPlayerOwnedVisible >= static_cast<uint32_t>(maxVisible))
         {
-            REASON("shouldHide: MaxPlayerOwnedVisible");
+            hideReason = EHideReason::MaxPlayerOwned;
             return true;
         }
 
         if (profile.HideOwnedInstances.get() && instanced && !c.isOwnerLocalPlayer)
         {
-            REASON("shouldHide: HideOwnedInstances");
+            hideReason = EHideReason::OwnedInstances;
             return true;
         }
 
         if (c.isOwnerLocalPlayer && profile.HidePlayerOwnedSelf.get())
         {
-            REASON("shouldHide: HidePlayerOwnedSelf");
+            hideReason = EHideReason::OwnedSelf;
             return true;
         }
 
         if (profile.HidePlayerOwned.get())
         {
-            REASON("shouldHide: HidePlayerOwned");
+            hideReason = EHideReason::HidePlayerOwned;
             return true;
         }
 
         if (profile.HideNonFriendsOwned.get() && !c.isFriend)
         {
-            REASON("shouldHide: HideNonFriendsOwned");
+            hideReason = EHideReason::NonFriendsOwned;
             return true;
         }
 
         if (profile.HideBlockedPlayersOwned.get() && c.isBlocked)
         {
-            REASON("shouldHide: HideBlockedPlayersOwned");
+            hideReason = EHideReason::BlockedOwned;
             return true;
         }
 
         if (profile.HideNonGuildMembersOwned.get() && !(c.isActiveGuildMember || c.isGuildMember))
         {
-            REASON("shouldHide: HideNonGuildMembersOwned");
+            hideReason = EHideReason::NonGuildOwned;
             return true;
         }
 
         const bool groupMember = c.isPartyMember || c.isSquadMember;
         if (profile.HideNonGroupMembersOwned.get() && !groupMember)
         {
-            REASON("shouldHide: HideNonGroupMembersOwned");
+            hideReason = EHideReason::NonGroupOwned;
             return true;
         }
 
         if (profile.HideStrangersOwned.get() && !c.isOwnerLocalPlayer && !c.isFriend && !c.isPartyMember
             && !c.isSquadMember && !c.isActiveGuildMember)
         {
-            REASON("shouldHide: HideStrangersOwned");
+            hideReason = EHideReason::StrangersOwned;
             return true;
         }
 
         if (!c.isOwnerLocalPlayer && profile.HidePlayerOwnedInCombat.get() && mumbleLink
             && mumbleLink->getContext().isInCombat())
         {
-            REASON("shouldHide: HidePlayerOwnedInCombat");
+            hideReason = EHideReason::InCombatOwned;
             return true;
         }
 
-        REASON("shouldHide: !c.isPlayerOwned");
         return false;
     }
 
     const auto maxVisible = profile.MaxNpcs.get();
     if (maxVisible > 0 && numNPCVisible >= static_cast<uint32_t>(maxVisible))
     {
-        REASON("shouldHide: MaxNpcs");
+        hideReason = EHideReason::MaxNpcs;
         return true;
     }
 
-    REASON("shouldHide: !");
     return false;
 }
 
@@ -603,44 +662,45 @@ bool unpc::shouldShow(const re::CharacterEntry& c, const bool instanced)
         return false;
     }
 
-    REASON(nullptr);
+    hideReason = EHideReason::None;
 
     const auto& profile = settings->profile();
 
     if (c.isTarget && profile.AlwaysShowTarget.get())
     {
-        REASON("shouldShow: AlwaysShowTarget");
         return true;
     }
 
     if (c.isPlayerOwned && c.isOwnerLocalPlayer && profile.AlwaysShowOwnedSelf.get())
     {
-        REASON("shouldShow: AlwaysShowOwnedSelf");
         return true;
     }
 
     if (profile.AlwaysShowGroup.get() && (c.isPartyMember || c.isSquadMember))
     {
-        REASON("shouldShow: AlwaysShowGroup");
         return true;
     }
 
     if (profile.AlwaysShowFriends.get() && c.isFriend)
     {
-        REASON("shouldShow: AlwaysShowFriends");
+        return true;
+    }
+
+    if (profile.AlwaysShowAttackable.get() && c.isAttackable)
+    {
         return true;
     }
 
     if (!c.isOnScreen && profile.HideOffScreen.get())
     {
         ++numOffScreenCulled;
-        REASON("shouldShow: !HideOffScreen");
+        hideReason = EHideReason::OffScreen;
         return false;
     }
 
     if (profile.MaximumDistance.get() > 0 && c.distance >= profile.MaximumDistance.get())
     {
-        REASON("shouldShow: !MaximumDistance");
+        hideReason = EHideReason::MaximumDistance;
         return false;
     }
 
@@ -648,62 +708,61 @@ bool unpc::shouldShow(const re::CharacterEntry& c, const bool instanced)
     {
         if (!profile.UnhidePlayers.get())
         {
-            REASON("shouldShow: !UnhidePlayers");
+            hideReason = EHideReason::NotUnhidden;
             return false;
         }
 
         const auto maxVisible = profile.MaxPlayersVisible.get();
         if (maxVisible > 0 && numPlayersVisible >= static_cast<uint32_t>(maxVisible))
         {
-            REASON("shouldShow: !MaxPlayersVisible");
+            hideReason = EHideReason::MaxPlayers;
             return false;
         }
 
         if (profile.HidePlayers.get())
         {
-            REASON("shouldShow: !HidePlayers");
+            hideReason = EHideReason::HidePlayers;
             return false;
         }
 
         if (profile.HideNonFriends.get() && !c.isFriend)
         {
-            REASON("shouldShow: !HideNonFriends");
+            hideReason = EHideReason::NonFriends;
             return false;
         }
 
         if (profile.HideBlockedPlayers.get() && c.isBlocked)
         {
-            REASON("shouldShow: !HideBlockedPlayers");
+            hideReason = EHideReason::Blocked;
             return false;
         }
 
         if (profile.HideNonGuildMembers.get() && !(c.isActiveGuildMember || c.isGuildMember))
         {
-            REASON("shouldShow: !HideNonGuildMembers");
+            hideReason = EHideReason::NonGuild;
             return false;
         }
 
         const bool groupMember = c.isPartyMember || c.isSquadMember;
         if (profile.HideNonGroupMembers.get() && !groupMember)
         {
-            REASON("shouldShow: !HideNonGroupMembers");
+            hideReason = EHideReason::NonGroup;
             return false;
         }
 
         if (profile.HideStrangers.get()
             && (!c.isFriend && !c.isPartyMember && !c.isSquadMember && !c.isActiveGuildMember))
         {
-            REASON("shouldShow: !HideStrangers");
+            hideReason = EHideReason::Strangers;
             return false;
         }
 
         if (profile.HidePlayersInCombat.get() && mumbleLink && mumbleLink->getContext().isInCombat())
         {
-            REASON("shouldShow: !HidePlayersInCombat");
+            hideReason = EHideReason::InCombat;
             return false;
         }
 
-        REASON("shouldShow: c.isPlayer");
         return true;
     }
 
@@ -711,113 +770,110 @@ bool unpc::shouldShow(const re::CharacterEntry& c, const bool instanced)
     {
         if (!profile.PlayerOwned.get())
         {
-            REASON("shouldShow: !PlayerOwned");
+            hideReason = EHideReason::NotUnhidden;
             return false;
         }
 
         const auto maxVisible = profile.MaxPlayerOwnedVisible.get();
         if (maxVisible > 0 && numPlayerOwnedVisible >= static_cast<uint32_t>(maxVisible))
         {
-            REASON("shouldShow: !MaxPlayerOwnedVisible");
+            hideReason = EHideReason::MaxPlayerOwned;
             return false;
         }
 
         if (profile.HideOwnedInstances.get() && instanced && !c.isOwnerLocalPlayer)
         {
-            REASON("shouldShow: !HideOwnedInstances");
+            hideReason = EHideReason::OwnedInstances;
             return false;
         }
 
         if (profile.HidePlayerOwnedSelf.get() && c.isOwnerLocalPlayer)
         {
-            REASON("shouldShow: !HidePlayerOwnedSelf");
+            hideReason = EHideReason::OwnedSelf;
             return false;
         }
 
         if (profile.HidePlayerOwned.get())
         {
-            REASON("shouldShow: !HidePlayerOwned");
+            hideReason = EHideReason::HidePlayerOwned;
             return false;
         }
 
         if (profile.HideNonFriendsOwned.get() && !c.isFriend)
         {
-            REASON("shouldShow: !HideNonFriendsOwned");
+            hideReason = EHideReason::NonFriendsOwned;
             return false;
         }
 
         if (profile.HideBlockedPlayersOwned.get() && c.isBlocked)
         {
-            REASON("shouldShow: !HideBlockedPlayersOwned");
+            hideReason = EHideReason::BlockedOwned;
             return false;
         }
 
         if (profile.HideNonGuildMembersOwned.get() && !(c.isActiveGuildMember || c.isGuildMember))
         {
-            REASON("shouldShow: !HideNonGuildMembersOwned");
+            hideReason = EHideReason::NonGuildOwned;
             return false;
         }
 
         const bool groupMember = c.isPartyMember || c.isSquadMember;
         if (profile.HideNonGroupMembersOwned.get() && !groupMember)
         {
-            REASON("shouldShow: !HideNonGroupMembersOwned");
+            hideReason = EHideReason::NonGroupOwned;
             return false;
         }
 
         if (profile.HideStrangersOwned.get() && !c.isOwnerLocalPlayer && !c.isFriend && !c.isPartyMember
             && !c.isSquadMember && !c.isActiveGuildMember)
         {
-            REASON("shouldShow: !HideStrangersOwned");
+            hideReason = EHideReason::StrangersOwned;
             return false;
         }
 
         if (!c.isOwnerLocalPlayer && profile.HidePlayerOwnedInCombat.get() && mumbleLink
             && mumbleLink->getContext().isInCombat())
         {
-            REASON("shouldShow: !HidePlayerOwnedInCombat");
+            hideReason = EHideReason::InCombatOwned;
             return false;
         }
 
-        REASON("shouldShow: c.isPlayerOwned");
         return true;
     }
 
     if (!profile.UnhideNPCs.get())
     {
-        REASON("shouldShow: !UnhideNPCs");
+        hideReason = EHideReason::NotUnhidden;
         return false;
     }
 
     const auto maxVisible = profile.MaxNpcs.get();
     if (maxVisible > 0 && numNPCVisible >= static_cast<uint32_t>(maxVisible))
     {
-        REASON("shouldShow: !MaxNpcs");
+        hideReason = EHideReason::MaxNpcs;
         return false;
     }
 
     if (c.rank < profile.MinimumRank.get())
     {
-        REASON("shouldShow: !MinimumRank");
+        hideReason = EHideReason::Rank;
         return false;
     }
 
     if (profile.Attackable.get() == 1 && !c.isAttackable)
     {
-        REASON("shouldShow: !Attackable");
+        hideReason = EHideReason::AttackableFilter;
         return false;
     }
     if (profile.Attackable.get() == 2 && c.isAttackable)
     {
-        REASON("shouldShow: Attackable");
+        hideReason = EHideReason::AttackableFilter;
         return false;
     }
 
-    REASON("shouldShow:");
     return true;
 }
 
-#undef REASON
 
 void unpc::start()
 {

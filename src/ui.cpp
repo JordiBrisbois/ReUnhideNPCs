@@ -346,6 +346,69 @@ static void renderProfileOptions()
     ui::tooltip("Remove current profile");
 }
 
+namespace
+{
+    // Options window state: a filter string shared by every section.
+    char searchBuffer[64] {};
+
+    bool searchActive()
+    {
+        return searchBuffer[0] != '\0';
+    }
+
+    bool matches(const char* text)
+    {
+        if (text == nullptr)
+        {
+            return true;
+        }
+
+        if (!searchActive())
+        {
+            return true;
+        }
+
+        const std::string haystack(text);
+        const std::string needle(searchBuffer);
+
+        return std::search(haystack.begin(),
+                           haystack.end(),
+                           needle.begin(),
+                           needle.end(),
+                           [](const char a, const char b)
+                           {
+                               return std::tolower(static_cast<unsigned char>(a))
+                                   == std::tolower(static_cast<unsigned char>(b));
+                           })
+            != haystack.end();
+    }
+
+    // Drops the rows that do not match the filter, so a checkbox group shows
+    // only what the user is looking for.
+    std::vector<CheckboxGroupEntry> filteredEntries(std::vector<CheckboxGroupEntry> entries)
+    {
+        if (searchActive())
+        {
+            std::erase_if(entries, [](const CheckboxGroupEntry& entry) { return !matches(entry.label); });
+        }
+
+        return entries;
+    }
+
+    bool section(const char* title)
+    {
+        if (searchActive())
+        {
+            // A search should reveal its matches, not hide them behind a
+            // collapsed header.
+            ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+        }
+
+        return ImGui::CollapsingHeader(title, ImGuiTreeNodeFlags_DefaultOpen);
+    }
+
+} // namespace
+
 void ui::renderOptions()
 {
     if (!unpc::settings || !unpc::settings->loaded())
@@ -370,477 +433,595 @@ void ui::renderOptions()
         fieldWidth = labelOffset + ImGui::GetFrameHeight();
     }
 
-    renderProfileOptions();
+    if (!unpc::clientLayoutOk)
+    {
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.35f, 0.35f, 1.0f));
+        ImGui::TextWrapped("The client layout check failed: the offsets no longer match this client build, so the add-on "
+                           "is not touching anything. Update ReUnhideNPCs-RE for this game version.");
+        ImGui::PopStyleColor();
+        ImGui::NewLine();
+    }
 
-    separatorText("Show");
+    renderProfileOptions();
+    ImGui::NewLine();
+
+    ImGui::SetNextItemWidth(-1.0f);
+    ImGui::InputTextWithHint("##search", "Search settings", searchBuffer, sizeof(searchBuffer));
+    ImGui::NewLine();
 
     bool unhideNPCsChanged {}, unhidePlayersChanged {}, playerOwnedChanged {}, alwaysShowTargetChanged {};
-    bool alwaysShowGroupChanged {}, alwaysShowFriendsChanged {};
-    bool unhideNPCs       = profile.UnhideNPCs.get();
-    bool unhidePlayers    = profile.UnhidePlayers.get();
-    bool playerOwned      = profile.PlayerOwned.get();
-    bool alwaysShowTarget = profile.AlwaysShowTarget.get();
-    bool alwaysShowGroup  = profile.AlwaysShowGroup.get();
+    bool alwaysShowGroupChanged {}, alwaysShowFriendsChanged {}, alwaysShowAttackableChanged {},
+        alwaysShowOwnedSelfChanged {};
+    bool unhideNPCs        = profile.UnhideNPCs.get();
+    bool unhidePlayers     = profile.UnhidePlayers.get();
+    bool playerOwned       = profile.PlayerOwned.get();
+    bool alwaysShowTarget  = profile.AlwaysShowTarget.get();
+    bool alwaysShowGroup   = profile.AlwaysShowGroup.get();
     bool alwaysShowFriends = profile.AlwaysShowFriends.get();
+    bool alwaysShowAttackable = profile.AlwaysShowAttackable.get();
+    bool alwaysShowOwnedSelf  = profile.AlwaysShowOwnedSelf.get();
 
     bool hideOffScreen = profile.HideOffScreen.get();
 
-    if (checkboxGroup(
-            "Unhide",
-            "The selected will be unhidden",
-            std::vector<CheckboxGroupEntry> {
-                {        "NPCs",profile.UnhideNPCs.description().c_str(),&unhideNPCs,&unhideNPCsChanged                                                                                             },
-                {     "Players", profile.UnhidePlayers.description().c_str(), &unhidePlayers,    &unhidePlayersChanged},
-                {"Player-Owned",   profile.PlayerOwned.description().c_str(),   &playerOwned,      &playerOwnedChanged},
-                {      "Target",
-                 profile.AlwaysShowTarget.description().c_str(),
-                 &alwaysShowTarget,
-                 &alwaysShowTargetChanged                                                                             },
-                {       "Group",
-                 profile.AlwaysShowGroup.description().c_str(),
-                 &alwaysShowGroup,
-                 &alwaysShowGroupChanged                                                                              },
-                {     "Friends",
-                 profile.AlwaysShowFriends.description().c_str(),
-                 &alwaysShowFriends,
-                 &alwaysShowFriendsChanged                                                                            }
-    }))
+    if (matches("show unhide target group friends attackable owned players npcs"))
     {
-        if (unhideNPCsChanged)
+        if (section("Show"))
         {
-            if (hideOffScreen)
+            if (checkboxGroup(
+                    "Unhide",
+                    "The selected will be unhidden",
+                    filteredEntries(std::vector<CheckboxGroupEntry> {
+                        {        "NPCs",profile.UnhideNPCs.description().c_str(),&unhideNPCs,&unhideNPCsChanged                                                                                             },
+                        {     "Players", profile.UnhidePlayers.description().c_str(), &unhidePlayers,    &unhidePlayersChanged},
+                        {"Player-Owned",   profile.PlayerOwned.description().c_str(),   &playerOwned,      &playerOwnedChanged},
+            })))
             {
-                unhideNPCs = true;
+                if (unhideNPCsChanged)
+                {
+                    if (hideOffScreen)
+                    {
+                        unhideNPCs = true;
+                    }
+
+                    profile.UnhideNPCs.set(unhideNPCs);
+                }
+                if (unhidePlayersChanged)
+                {
+                    if (hideOffScreen)
+                    {
+                        unhidePlayers = true;
+                    }
+
+                    profile.UnhidePlayers.set(unhidePlayers);
+                }
+                if (playerOwnedChanged)
+                {
+                    if (hideOffScreen)
+                    {
+                        playerOwned = true;
+                    }
+
+                    profile.PlayerOwned.set(playerOwned);
+                }
+            }
+            ImGui::NewLine();
+
+            if (checkboxGroup(
+                    "Always Show",
+                    "Never hidden, whatever the other rules say",
+                    filteredEntries(std::vector<CheckboxGroupEntry> {
+                        {      "Target",
+                         profile.AlwaysShowTarget.description().c_str(),
+                         &alwaysShowTarget,
+                         &alwaysShowTargetChanged                                                                             },
+                        {       "Group",
+                         profile.AlwaysShowGroup.description().c_str(),
+                         &alwaysShowGroup,
+                         &alwaysShowGroupChanged                                                                              },
+                        {     "Friends",
+                         profile.AlwaysShowFriends.description().c_str(),
+                         &alwaysShowFriends,
+                         &alwaysShowFriendsChanged                                                                            },
+                        {  "Attackable",
+                         profile.AlwaysShowAttackable.description().c_str(),
+                         &alwaysShowAttackable,
+                         &alwaysShowAttackableChanged                                                                         },
+                        {         "Mine",
+                         profile.AlwaysShowOwnedSelf.description().c_str(),
+                         &alwaysShowOwnedSelf,
+                         &alwaysShowOwnedSelfChanged                                                                          }
+            })))
+            {
+                if (alwaysShowTargetChanged)
+                {
+                    profile.AlwaysShowTarget.set(alwaysShowTarget);
+                }
+                if (alwaysShowGroupChanged)
+                {
+                    profile.AlwaysShowGroup.set(alwaysShowGroup);
+                }
+                if (alwaysShowFriendsChanged)
+                {
+                    profile.AlwaysShowFriends.set(alwaysShowFriends);
+                }
+                if (alwaysShowAttackableChanged)
+                {
+                    profile.AlwaysShowAttackable.set(alwaysShowAttackable);
+                }
+                if (alwaysShowOwnedSelfChanged)
+                {
+                    profile.AlwaysShowOwnedSelf.set(alwaysShowOwnedSelf);
+                }
+            }
+        }
+    }
+
+    if (matches("models basic quality distance"))
+    {
+        if (section("Models"))
+        {
+            bool unhideLowQuality      = profile.UnhideLowQuality.get();
+            bool unhideMountLowQuality = profile.UnhideMountLowQuality.get();
+            bool unhideLowQualityChanged {}, unhideMountLowQualityChanged {};
+
+            if (checkboxGroup(
+                    "Basic Models",
+                    "Use basic models when unhiding",
+                    filteredEntries(std::vector<CheckboxGroupEntry> {
+                        {   "All",profile.UnhideLowQuality.description().c_str(),&unhideLowQuality,&unhideLowQualityChanged                   },
+                        {"Mounts",
+                         profile.UnhideMountLowQuality.description().c_str(),
+                         &unhideMountLowQuality,
+                         &unhideMountLowQualityChanged}
+            })))
+            {
+                if (unhideLowQualityChanged)
+                {
+                    profile.UnhideLowQuality.set(unhideLowQuality);
+                }
+                if (unhideMountLowQualityChanged)
+                {
+                    profile.UnhideMountLowQuality.set(unhideMountLowQuality);
+                }
+            }
+            ImGui::NewLine();
+
+            if (matches("distance"))
+            {
+                auto basicDistance = profile.BasicModelDistance.get();
+                if (sliderInt("Basic Beyond",
+                              "##basicModelDistance",
+                              basicDistance,
+                              0,
+                              200,
+                              basicDistance == 0 ? "Never" : "%d meters",
+                              profile.BasicModelDistance.description().c_str()))
+                {
+                    profile.BasicModelDistance.set(basicDistance);
+                }
+            }
+        }
+    }
+
+    if (matches("hide off-screen offscreen combat strangers blocked guild group friends keep grace"))
+    {
+        if (section("Hide"))
+        {
+            if (matches("off-screen offscreen"))
+            {
+                if (checkbox(
+                        "Hide Off-Screen", "##hideOffScreen", hideOffScreen, profile.HideOffScreen.description().c_str()))
+                {
+                    if (!unhideNPCs)
+                    {
+                        profile.UnhideNPCs.set(true);
+                    }
+                    if (!unhidePlayers)
+                    {
+                        profile.UnhidePlayers.set(true);
+                    }
+                    if (!playerOwned)
+                    {
+                        profile.PlayerOwned.set(true);
+                    }
+                    profile.HideOffScreen.set(hideOffScreen);
+                }
+
+                if (profile.HideOffScreen.get())
+                {
+                    ImGui::SameLine();
+                    ImGui::TextDisabled("(%u off-screen, %u confirmed hidden)",
+                                        unpc::numOffScreenCulled,
+                                        unpc::numOffScreenConfirmed);
+                }
+
+                int32_t offScreenKeepDistance = profile.OffScreenKeepDistance.get();
+                if (sliderInt("Off-Screen Keep",
+                              "##offScreenKeepDistance",
+                              offScreenKeepDistance,
+                              0,
+                              50,
+                              offScreenKeepDistance == 0 ? "0 m" : "%d m",
+                              profile.OffScreenKeepDistance.description().c_str()))
+                {
+                    profile.OffScreenKeepDistance.set(offScreenKeepDistance);
+                }
+
+                float offScreenGrace = static_cast<float>(profile.OffScreenGraceMs.get()) / 1000.0f;
+                if (sliderFloat("Off-Screen Grace",
+                                "##offScreenGraceMs",
+                                offScreenGrace,
+                                0.0f,
+                                15.0f,
+                                offScreenGrace == 0.0f ? "Instant" : "%.1f s",
+                                profile.OffScreenGraceMs.description().c_str()))
+                {
+                    profile.OffScreenGraceMs.set(static_cast<int32_t>(offScreenGrace * 1000.0f + 0.5f));
+                }
+                ImGui::NewLine();
             }
 
-            profile.UnhideNPCs.set(unhideNPCs);
-        }
-        if (unhidePlayersChanged)
-        {
-            if (hideOffScreen)
+            bool hideAllPlayersChanged {}, hideBlockedPlayersChanged {}, hideNonGroupPlayersChanged {},
+                hideStrangersChanged {}, hideNonGuildPlayersChanged {}, hideNonFriendPlayersChanged {};
+            bool hidePlayers         = profile.HidePlayers.get();
+            bool hideBlockedPlayers  = profile.HideBlockedPlayers.get();
+            bool hideNonGroupMembers = profile.HideNonGroupMembers.get();
+            bool hideStrangers       = profile.HideStrangers.get();
+            bool hideNonGuildMembers = profile.HideNonGuildMembers.get();
+            bool hideNonFriends      = profile.HideNonFriends.get();
+
+            if (matches("players all blocked non-group strangers non-guild non-friends"))
             {
-                unhidePlayers = true;
+                if (checkboxGroup(
+                        "Players",
+                        "Players that match the selected criteria will be hidden",
+                        filteredEntries(std::vector<CheckboxGroupEntry> {
+                            {        "All",profile.HidePlayers.description().c_str(),&hidePlayers,&hideAllPlayersChanged                                                                                            },
+                            {    "Blocked",
+                             profile.HideBlockedPlayers.description().c_str(),
+                             &hideBlockedPlayers,
+                             &hideBlockedPlayersChanged                                                                              },
+                            {  "Non-Group",
+                             profile.HideNonGroupMembers.description().c_str(),
+                             &hideNonGroupMembers,
+                             &hideNonGroupPlayersChanged                                                                             },
+                            {  "Strangers", profile.HideStrangers.description().c_str(), &hideStrangers,        &hideStrangersChanged},
+                            {  "Non-Guild",
+                             profile.HideNonGuildMembers.description().c_str(),
+                             &hideNonGuildMembers,
+                             &hideNonGuildPlayersChanged                                                                             },
+                            {"Non-Friends",
+                             profile.HideNonFriends.description().c_str(),
+                             &hideNonFriends,
+                             &hideNonFriendPlayersChanged                                                                            }
+                })))
+                {
+                    if (hideAllPlayersChanged)
+                    {
+                        profile.HidePlayers.set(hidePlayers);
+                    }
+                    if (hideBlockedPlayersChanged)
+                    {
+                        profile.HideBlockedPlayers.set(hideBlockedPlayers);
+                    }
+                    if (hideNonGroupPlayersChanged)
+                    {
+                        profile.HideNonGroupMembers.set(hideNonGroupMembers);
+                    }
+                    if (hideStrangersChanged)
+                    {
+                        profile.HideStrangers.set(hideStrangers);
+                    }
+                    if (hideNonGuildPlayersChanged)
+                    {
+                        profile.HideNonGuildMembers.set(hideNonGuildMembers);
+                    }
+                    if (hideNonFriendPlayersChanged)
+                    {
+                        profile.HideNonFriends.set(hideNonFriends);
+                    }
+                }
+                ImGui::NewLine();
             }
 
-            profile.UnhidePlayers.set(unhidePlayers);
-        }
-        if (playerOwnedChanged)
-        {
-            if (hideOffScreen)
+            bool hideAllPlayerOwnedChanged {}, hideBlockedPlayerOwnedChanged {}, hideNonGroupPlayerOwnedChanged {},
+                hideStrangersOwnedChanged {}, hideNonGuildPlayerOwnedChanged {}, hideNonFriendPlayerOwnedChanged {},
+                hideMyOwnedChanged {}, hideOwnedInstancesChanged {};
+            bool hidePlayerOwned          = profile.HidePlayerOwned.get();
+            bool hideBlockedPlayersOwned  = profile.HideBlockedPlayersOwned.get();
+            bool hideNonGroupMembersOwned = profile.HideNonGroupMembersOwned.get();
+            bool hideStrangersOwned       = profile.HideStrangersOwned.get();
+            bool hideNonGuildMembersOwned = profile.HideNonGuildMembersOwned.get();
+            bool hideNonFriendsOwned      = profile.HideNonFriendsOwned.get();
+            bool hidePlayerOwnedSelf      = profile.HidePlayerOwnedSelf.get();
+            bool hideOwnedInstance        = profile.HideOwnedInstances.get();
+
+            if (matches("owned blocked non-group strangers non-guild non-friends mine instances"))
             {
-                playerOwned = true;
+                if (checkboxGroup(
+                        "Player-Owned",
+                        "Characters that are owned by the selected type of players will be hidden",
+                        filteredEntries(std::vector<CheckboxGroupEntry> {
+                            {        "All",profile.HidePlayerOwned.description().c_str(),&hidePlayerOwned,&hideAllPlayerOwnedChanged                                                                                                        },
+                            {    "Blocked",
+                             profile.HideBlockedPlayersOwned.description().c_str(),
+                             &hideBlockedPlayersOwned,
+                             &hideBlockedPlayerOwnedChanged                                                                                    },
+                            {  "Non-Group",
+                             profile.HideNonGroupMembersOwned.description().c_str(),
+                             &hideNonGroupMembersOwned,
+                             &hideNonGroupPlayerOwnedChanged                                                                                   },
+                            {  "Strangers",
+                             profile.HideStrangersOwned.description().c_str(),
+                             &hideStrangersOwned,
+                             &hideStrangersOwnedChanged                                                                                        },
+                            {  "Non-Guild",
+                             profile.HideNonGuildMembersOwned.description().c_str(),
+                             &hideNonGuildMembersOwned,
+                             &hideNonGuildPlayerOwnedChanged                                                                                   },
+                            {"Non-Friends",
+                             profile.HideNonFriendsOwned.description().c_str(),
+                             &hideNonFriendsOwned,
+                             &hideNonFriendPlayerOwnedChanged                                                                                  },
+                            {       "Mine", profile.HidePlayerOwnedSelf.description().c_str(), &hidePlayerOwnedSelf,        &hideMyOwnedChanged},
+                            {  "Instances",
+                             profile.HideOwnedInstances.description().c_str(),
+                             &hideOwnedInstance,
+                             &hideOwnedInstancesChanged                                                                                        }
+                })))
+                {
+                    if (hideAllPlayerOwnedChanged)
+                    {
+                        profile.HidePlayerOwned.set(hidePlayerOwned);
+                    }
+                    if (hideBlockedPlayerOwnedChanged)
+                    {
+                        profile.HideBlockedPlayersOwned.set(hideBlockedPlayersOwned);
+                    }
+                    if (hideNonGroupPlayerOwnedChanged)
+                    {
+                        profile.HideNonGroupMembersOwned.set(hideNonGroupMembersOwned);
+                    }
+                    if (hideStrangersOwnedChanged)
+                    {
+                        profile.HideStrangersOwned.set(hideStrangersOwned);
+                    }
+                    if (hideNonGuildPlayerOwnedChanged)
+                    {
+                        profile.HideNonGuildMembersOwned.set(hideNonGuildMembersOwned);
+                    }
+                    if (hideNonFriendPlayerOwnedChanged)
+                    {
+                        profile.HideNonFriendsOwned.set(hideNonFriendsOwned);
+                    }
+                    if (hideMyOwnedChanged)
+                    {
+                        profile.HidePlayerOwnedSelf.set(hidePlayerOwnedSelf);
+                    }
+                    if (hideOwnedInstancesChanged)
+                    {
+                        profile.HideOwnedInstances.set(hideOwnedInstance);
+                    }
+                }
+                ImGui::NewLine();
             }
 
-            profile.PlayerOwned.set(playerOwned);
-        }
-        if (alwaysShowTargetChanged)
-        {
-            profile.AlwaysShowTarget.set(alwaysShowTarget);
-        }
-        if (alwaysShowGroupChanged)
-        {
-            profile.AlwaysShowGroup.set(alwaysShowGroup);
-        }
-        if (alwaysShowFriendsChanged)
-        {
-            profile.AlwaysShowFriends.set(alwaysShowFriends);
+            bool hidePlayersInCombatChanged {}, hidePlayerOwnedInCombatChanged {};
+            bool hidePlayersInCombat     = profile.HidePlayersInCombat.get();
+            bool hidePlayerOwnedInCombat = profile.HidePlayerOwnedInCombat.get();
+
+            if (matches("combat"))
+            {
+                if (checkboxGroup("In Combat",
+                                  "When in combat, hide the following",
+                                  filteredEntries(std::vector<CheckboxGroupEntry> {
+                                      {     "Players",
+                                       profile.HidePlayersInCombat.description().c_str(),
+                                       &hidePlayersInCombat,
+                                       &hidePlayersInCombatChanged    },
+                                      {"Player-Owned",
+                                       profile.HidePlayerOwnedInCombat.description().c_str(),
+                                       &hidePlayerOwnedInCombat,
+                                       &hidePlayerOwnedInCombatChanged}
+                })))
+                {
+                    if (hidePlayersInCombatChanged)
+                    {
+                        profile.HidePlayersInCombat.set(hidePlayersInCombat);
+                    }
+                    if (hidePlayerOwnedInCombatChanged)
+                    {
+                        profile.HidePlayerOwnedInCombat.set(hidePlayerOwnedInCombat);
+                    }
+                }
+            }
         }
     }
-    ImGui::NewLine();
 
-    bool unhideLowQuality      = profile.UnhideLowQuality.get();
-    bool unhideMountLowQuality = profile.UnhideMountLowQuality.get();
-    bool unhideLowQualityChanged {}, unhideMountLowQualityChanged {};
-
-    if (checkboxGroup(
-            "Basic Models",
-            "Use basic models when unhiding",
-            std::vector<CheckboxGroupEntry> {
-                {   "All",profile.UnhideLowQuality.description().c_str(),&unhideLowQuality,&unhideLowQualityChanged                   },
-                {"Mounts",
-                 profile.UnhideMountLowQuality.description().c_str(),
-                 &unhideMountLowQuality,
-                 &unhideMountLowQualityChanged}
-    }))
+    if (matches("limits max distance rank attackable nearest"))
     {
-        if (unhideLowQualityChanged)
+        if (section("Limits"))
         {
-            profile.UnhideLowQuality.set(unhideLowQuality);
-        }
-        if (unhideMountLowQualityChanged)
-        {
-            profile.UnhideMountLowQuality.set(unhideMountLowQuality);
+            if (matches("distance"))
+            {
+                if (auto maxDistance = static_cast<int32_t>(profile.MaximumDistance.get());
+                    sliderInt("Max Distance",
+                              "##maxDistance",
+                              maxDistance,
+                              0,
+                              1000,
+                              maxDistance == 0 ? "Unlimited" : "%d meters",
+                              profile.MaximumDistance.description().c_str()))
+                {
+                    profile.MaximumDistance.set(static_cast<float>(maxDistance));
+                }
+            }
+
+            if (matches("rank"))
+            {
+                int minimumRank = profile.MinimumRank.get();
+                if (combo("Minimum Rank",
+                          "##minRank",
+                          minimumRank,
+                          ranks,
+                          IM_ARRAYSIZE(ranks),
+                          profile.MinimumRank.description().c_str()))
+                {
+                    profile.MinimumRank.set(minimumRank);
+                }
+            }
+
+            if (matches("attackable"))
+            {
+                int attackable = profile.Attackable.get();
+                if (combo("Attackable",
+                          "##attackable",
+                          attackable,
+                          modes,
+                          IM_ARRAYSIZE(modes),
+                          profile.Attackable.description().c_str()))
+                {
+                    profile.Attackable.set(attackable);
+                }
+            }
+
+            if (matches("max players"))
+            {
+                int32_t maxPlayersVisible = profile.MaxPlayersVisible.get();
+                if (sliderInt("Max Players",
+                              "##MaxPlayersVisible",
+                              maxPlayersVisible,
+                              0,
+                              250,
+                              maxPlayersVisible == 0 ? "Unlimited" : "%d",
+                              profile.MaxPlayersVisible.description().c_str()))
+                {
+                    profile.MaxPlayersVisible.set(maxPlayersVisible);
+                }
+            }
+
+            if (matches("owned"))
+            {
+                int32_t maxPlayerOwnedVisible = profile.MaxPlayerOwnedVisible.get();
+                if (sliderInt("Max Player-Owned",
+                              "##MaxPlayerOwnedVisible",
+                              maxPlayerOwnedVisible,
+                              0,
+                              100,
+                              maxPlayerOwnedVisible == 0 ? "Unlimited" : "%d",
+                              profile.MaxPlayerOwnedVisible.description().c_str()))
+                {
+                    profile.MaxPlayerOwnedVisible.set(maxPlayerOwnedVisible);
+                }
+            }
+
+            if (matches("npcs"))
+            {
+                int32_t maxNPCs = profile.MaxNpcs.get();
+                if (sliderInt("Max NPCs",
+                              "##maxNPCs",
+                              maxNPCs,
+                              0,
+                              1000,
+                              maxNPCs == 0 ? "Unlimited" : "%d",
+                              profile.MaxNpcs.description().c_str()))
+                {
+                    profile.MaxNpcs.set(maxNPCs);
+                }
+            }
+
+            if (matches("nearest"))
+            {
+                bool prioritizeNearest = profile.PrioritizeNearest.get();
+                if (checkbox("Nearest First",
+                             "##prioritizeNearest",
+                             prioritizeNearest,
+                             profile.PrioritizeNearest.description().c_str()))
+                {
+                    profile.PrioritizeNearest.set(prioritizeNearest);
+                }
+            }
+
+            if (matches("rank"))
+            {
+                bool prioritizeRank = profile.PrioritizeRank.get();
+                if (checkbox("Rank First",
+                             "##prioritizeRank",
+                             prioritizeRank,
+                             profile.PrioritizeRank.description().c_str()))
+                {
+                    profile.PrioritizeRank.set(prioritizeRank);
+                }
+            }
         }
     }
-    ImGui::NewLine();
-    if (auto maxDistance = static_cast<int32_t>(profile.MaximumDistance.get());
-        sliderInt("Max Distance",
-                  "##maxDistance",
-                  maxDistance,
-                  0,
-                  1000,
-                  maxDistance == 0 ? "Unlimited" : "%d meters",
-                  profile.MaximumDistance.description().c_str()))
+
+    if (matches("misc console loading escape font instance behaviour"))
     {
-        profile.MaximumDistance.set(static_cast<float>(maxDistance));
-    }
+        if (section("Misc"))
+        {
+            if (matches("instance"))
+            {
+                int instanceBehaviour = profile.InstanceBehaviour.get();
+                if (combo("Instance Behaviour",
+                          "##instances",
+                          instanceBehaviour,
+                          instanceModes,
+                          IM_ARRAYSIZE(instanceModes),
+                          profile.InstanceBehaviour.description().c_str()))
+                {
+                    profile.InstanceBehaviour.set(instanceBehaviour);
+                }
+            }
 
-    int minimumRank = profile.MinimumRank.get();
-    if (combo("Minimum Rank",
-              "##minRank",
-              minimumRank,
-              ranks,
-              IM_ARRAYSIZE(ranks),
-              profile.MinimumRank.description().c_str()))
-    {
-        profile.MinimumRank.set(minimumRank);
-    }
+            bool forceConsoleChanged {}, loadScreenBoostChanged {}, closeOnEscapeChanged {};
+            bool forceConsole    = settings.ForceConsole.get();
+            bool loadScreenBoost = settings.LoadScreenBoost.get();
+            bool closeOnEscape   = settings.CloseOnEscape.get();
 
-    int attackable = profile.Attackable.get();
-    if (combo("Attackable",
-              "##attackable",
-              attackable,
-              modes,
-              IM_ARRAYSIZE(modes),
-              profile.Attackable.description().c_str()))
-    {
-        profile.Attackable.set(attackable);
-    }
+            std::vector<CheckboxGroupEntry> entries {};
+            entries.emplace_back("Console", settings.ForceConsole.description().c_str(), &forceConsole, &forceConsoleChanged);
+            entries.emplace_back(
+                "Loading Boost", settings.LoadScreenBoost.description().c_str(), &loadScreenBoost, &loadScreenBoostChanged);
+            entries.emplace_back(
+                "Esc To Close", settings.CloseOnEscape.description().c_str(), &closeOnEscape, &closeOnEscapeChanged);
 
-    separatorText("Hide");
+            if (checkboxGroup(nullptr, nullptr, filteredEntries(entries)))
+            {
+                if (forceConsoleChanged)
+                {
+                    settings.ForceConsole.set(forceConsole);
+                    unpc::logger->setConsole(forceConsole);
+                }
+                if (loadScreenBoostChanged)
+                {
+                    settings.LoadScreenBoost.set(loadScreenBoost);
+                }
+                if (closeOnEscapeChanged)
+                {
+                    settings.CloseOnEscape.set(closeOnEscape);
+                }
+            }
+            ImGui::NewLine();
 
-    if (checkbox("Hide Off-Screen", "##hideOffScreen", hideOffScreen, profile.HideOffScreen.description().c_str()))
-    {
-        if (!unhideNPCs)
-        {
-            profile.UnhideNPCs.set(true);
-        }
-        if (!unhidePlayers)
-        {
-            profile.UnhidePlayers.set(true);
-        }
-        if (!playerOwned)
-        {
-            profile.PlayerOwned.set(true);
-        }
-        profile.HideOffScreen.set(hideOffScreen);
-    }
-
-    if (profile.HideOffScreen.get())
-    {
-        ImGui::SameLine();
-        ImGui::TextDisabled("(%u off-screen, %u confirmed hidden)",
-                            unpc::numOffScreenCulled,
-                            unpc::numOffScreenConfirmed);
-    }
-
-    int32_t offScreenKeepDistance = profile.OffScreenKeepDistance.get();
-    if (sliderInt("Off-Screen Keep",
-                  "##offScreenKeepDistance",
-                  offScreenKeepDistance,
-                  0,
-                  50,
-                  offScreenKeepDistance == 0 ? "0 m" : "%d m",
-                  profile.OffScreenKeepDistance.description().c_str()))
-    {
-        profile.OffScreenKeepDistance.set(offScreenKeepDistance);
-    }
-
-    float offScreenGrace = static_cast<float>(profile.OffScreenGraceMs.get()) / 1000.0f;
-    if (sliderFloat("Off-Screen Grace",
-                    "##offScreenGraceMs",
-                    offScreenGrace,
-                    0.0f,
-                    15.0f,
-                    offScreenGrace == 0.0f ? "Instant" : "%.1f s",
-                    profile.OffScreenGraceMs.description().c_str()))
-    {
-        profile.OffScreenGraceMs.set(static_cast<int32_t>(offScreenGrace * 1000.0f + 0.5f));
-    }
-
-    bool hideAllPlayersChanged {}, hideBlockedPlayersChanged {}, hideNonGroupPlayersChanged {}, hideStrangersChanged {},
-        hideNonGuildPlayersChanged {}, hideNonFriendPlayersChanged {};
-    bool hidePlayers         = profile.HidePlayers.get();
-    bool hideBlockedPlayers  = profile.HideBlockedPlayers.get();
-    bool hideNonGroupMembers = profile.HideNonGroupMembers.get();
-    bool hideStrangers       = profile.HideStrangers.get();
-    bool hideNonGuildMembers = profile.HideNonGuildMembers.get();
-    bool hideNonFriends      = profile.HideNonFriends.get();
-
-    if (checkboxGroup(
-            "Players",
-            "Players that match the selected criteria will be hidden",
-            std::vector<CheckboxGroupEntry> {
-                {        "All",profile.HidePlayers.description().c_str(),&hidePlayers,&hideAllPlayersChanged                                                                                            },
-                {    "Blocked",
-                 profile.HideBlockedPlayers.description().c_str(),
-                 &hideBlockedPlayers,
-                 &hideBlockedPlayersChanged                                                                              },
-                {  "Non-Group",
-                 profile.HideNonGroupMembers.description().c_str(),
-                 &hideNonGroupMembers,
-                 &hideNonGroupPlayersChanged                                                                             },
-                {  "Strangers", profile.HideStrangers.description().c_str(), &hideStrangers,        &hideStrangersChanged},
-                {  "Non-Guild",
-                 profile.HideNonGuildMembers.description().c_str(),
-                 &hideNonGuildMembers,
-                 &hideNonGuildPlayersChanged                                                                             },
-                {"Non-Friends",
-                 profile.HideNonFriends.description().c_str(),
-                 &hideNonFriends,
-                 &hideNonFriendPlayersChanged                                                                            }
-    }))
-    {
-        if (hideAllPlayersChanged)
-        {
-            profile.HidePlayers.set(hidePlayers);
-        }
-        if (hideBlockedPlayersChanged)
-        {
-            profile.HideBlockedPlayers.set(hideBlockedPlayers);
-        }
-        if (hideNonGroupPlayersChanged)
-        {
-            profile.HideNonGroupMembers.set(hideNonGroupMembers);
-        }
-        if (hideStrangersChanged)
-        {
-            profile.HideStrangers.set(hideStrangers);
-        }
-        if (hideNonGuildPlayersChanged)
-        {
-            profile.HideNonGuildMembers.set(hideNonGuildMembers);
-        }
-        if (hideNonFriendPlayersChanged)
-        {
-            profile.HideNonFriends.set(hideNonFriends);
-        }
-    }
-    ImGui::NewLine();
-
-    bool hideAllPlayerOwnedChanged {}, hideBlockedPlayerOwnedChanged {}, hideNonGroupPlayerOwnedChanged {},
-        hideStrangersOwnedChanged {}, hideNonGuildPlayerOwnedChanged {}, hideNonFriendPlayerOwnedChanged {},
-        hideMyOwnedChanged {}, hideOwnedInstancesChanged {};
-    bool hidePlayerOwned          = profile.HidePlayerOwned.get();
-    bool hideBlockedPlayersOwned  = profile.HideBlockedPlayersOwned.get();
-    bool hideNonGroupMembersOwned = profile.HideNonGroupMembersOwned.get();
-    bool hideStrangersOwned       = profile.HideStrangersOwned.get();
-    bool hideNonGuildMembersOwned = profile.HideNonGuildMembersOwned.get();
-    bool hideNonFriendsOwned      = profile.HideNonFriendsOwned.get();
-    bool hidePlayerOwnedSelf      = profile.HidePlayerOwnedSelf.get();
-    bool hideOwnedInstance        = profile.HideOwnedInstances.get();
-
-    if (checkboxGroup(
-            "Player-Owned",
-            "Characters that are owned by the selected type of players will be hidden",
-            std::vector<CheckboxGroupEntry> {
-                {        "All",profile.HidePlayerOwned.description().c_str(),&hidePlayerOwned,&hideAllPlayerOwnedChanged                                                                                                        },
-                {    "Blocked",
-                 profile.HideBlockedPlayersOwned.description().c_str(),
-                 &hideBlockedPlayersOwned,
-                 &hideBlockedPlayerOwnedChanged                                                                                    },
-                {  "Non-Group",
-                 profile.HideNonGroupMembersOwned.description().c_str(),
-                 &hideNonGroupMembersOwned,
-                 &hideNonGroupPlayerOwnedChanged                                                                                   },
-                {  "Strangers",
-                 profile.HideStrangersOwned.description().c_str(),
-                 &hideStrangersOwned,
-                 &hideStrangersOwnedChanged                                                                                        },
-                {  "Non-Guild",
-                 profile.HideNonGuildMembersOwned.description().c_str(),
-                 &hideNonGuildMembersOwned,
-                 &hideNonGuildPlayerOwnedChanged                                                                                   },
-                {"Non-Friends",
-                 profile.HideNonFriendsOwned.description().c_str(),
-                 &hideNonFriendsOwned,
-                 &hideNonFriendPlayerOwnedChanged                                                                                  },
-                {       "Mine", profile.HidePlayerOwnedSelf.description().c_str(), &hidePlayerOwnedSelf,        &hideMyOwnedChanged},
-                {  "Instances",
-                 profile.HideOwnedInstances.description().c_str(),
-                 &hideOwnedInstance,
-                 &hideOwnedInstancesChanged                                                                                        }
-    }))
-    {
-        if (hideAllPlayerOwnedChanged)
-        {
-            profile.HidePlayerOwned.set(hidePlayerOwned);
-        }
-        if (hideBlockedPlayerOwnedChanged)
-        {
-            profile.HideBlockedPlayersOwned.set(hideBlockedPlayersOwned);
-        }
-        if (hideNonGroupPlayerOwnedChanged)
-        {
-            profile.HideNonGroupMembersOwned.set(hideNonGroupMembersOwned);
-        }
-        if (hideStrangersOwnedChanged)
-        {
-            profile.HideStrangersOwned.set(hideStrangersOwned);
-        }
-        if (hideNonGuildPlayerOwnedChanged)
-        {
-            profile.HideNonGuildMembersOwned.set(hideNonGuildMembersOwned);
-        }
-        if (hideNonFriendPlayerOwnedChanged)
-        {
-            profile.HideNonFriendsOwned.set(hideNonFriendsOwned);
-        }
-        if (hideMyOwnedChanged)
-        {
-            profile.HidePlayerOwnedSelf.set(hidePlayerOwnedSelf);
-        }
-        if (hideOwnedInstancesChanged)
-        {
-            profile.HideOwnedInstances.set(hideOwnedInstance);
-        }
-    }
-    ImGui::NewLine();
-
-    bool hidePlayersInCombatChanged {}, hidePlayerOwnedInCombatChanged {};
-    bool hidePlayersInCombat     = profile.HidePlayersInCombat.get();
-    bool hidePlayerOwnedInCombat = profile.HidePlayerOwnedInCombat.get();
-    if (checkboxGroup("In Combat",
-                      "When in combat, hide the following",
-                      std::vector<CheckboxGroupEntry> {
-                          {     "Players",
-                           profile.HidePlayersInCombat.description().c_str(),
-                           &hidePlayersInCombat,
-                           &hidePlayersInCombatChanged    },
-                          {"Player-Owned",
-                           profile.HidePlayerOwnedInCombat.description().c_str(),
-                           &hidePlayerOwnedInCombat,
-                           &hidePlayerOwnedInCombatChanged}
-    }))
-    {
-        if (hidePlayersInCombatChanged)
-        {
-            profile.HidePlayersInCombat.set(hidePlayersInCombat);
-        }
-        if (hidePlayerOwnedInCombatChanged)
-        {
-            profile.HidePlayerOwnedInCombat.set(hidePlayerOwnedInCombat);
+            if ((unpc::mode == unpc::EMode::Proxy || unpc::mode == unpc::EMode::Injected) && matches("font"))
+            {
+                float overlayFontSize = settings.OverlayFontSize.get();
+                if (sliderFloat("Font Size",
+                                "##OverlayFontSize",
+                                overlayFontSize,
+                                10,
+                                20,
+                                "%.0f",
+                                settings.OverlayFontSize.description().c_str()))
+                {
+                    settings.OverlayFontSize.set(std::roundf(overlayFontSize));
+                }
+            }
         }
     }
 
     ImGui::NewLine();
-    int32_t maxPlayersVisible = profile.MaxPlayersVisible.get();
-    if (sliderInt("Max Players",
-                  "##MaxPlayersVisible",
-                  maxPlayersVisible,
-                  0,
-                  250,
-                  maxPlayersVisible == 0 ? "Unlimited" : "%d",
-                  profile.MaxPlayersVisible.description().c_str()))
-    {
-        profile.MaxPlayersVisible.set(maxPlayersVisible);
-    }
-
-    int32_t maxPlayerOwnedVisible = profile.MaxPlayerOwnedVisible.get();
-    if (sliderInt("Max Player-Owned",
-                  "##MaxPlayerOwnedVisible",
-                  maxPlayerOwnedVisible,
-                  0,
-                  100,
-                  maxPlayerOwnedVisible == 0 ? "Unlimited" : "%d",
-                  profile.MaxPlayerOwnedVisible.description().c_str()))
-    {
-        profile.MaxPlayerOwnedVisible.set(maxPlayerOwnedVisible);
-    }
-
-    bool alwaysShowOwnedSelf = profile.AlwaysShowOwnedSelf.get();
-    if (checkbox("Always Show My Owned",
-                 "##alwaysShowOwnedSelf",
-                 alwaysShowOwnedSelf,
-                 profile.AlwaysShowOwnedSelf.description().c_str()))
-    {
-        profile.AlwaysShowOwnedSelf.set(alwaysShowOwnedSelf);
-    }
-
-    int32_t maxNPCs = profile.MaxNpcs.get();
-    if (sliderInt("Max NPCs",
-                  "##maxNPCs",
-                  maxNPCs,
-                  0,
-                  1000,
-                  maxNPCs == 0 ? "Unlimited" : "%d",
-                  profile.MaxNpcs.description().c_str()))
-    {
-        profile.MaxNpcs.set(maxNPCs);
-    }
-
-    bool prioritizeNearest = profile.PrioritizeNearest.get();
-    if (checkbox("Nearest First",
-                 "##prioritizeNearest",
-                 prioritizeNearest,
-                 profile.PrioritizeNearest.description().c_str()))
-    {
-        profile.PrioritizeNearest.set(prioritizeNearest);
-    }
-
-    ImGui::NewLine();
-
-    int instanceBehaviour = profile.InstanceBehaviour.get();
-    if (combo("Instance Behaviour",
-              "##instances",
-              instanceBehaviour,
-              instanceModes,
-              IM_ARRAYSIZE(instanceModes),
-              profile.InstanceBehaviour.description().c_str()))
-    {
-        profile.InstanceBehaviour.set(instanceBehaviour);
-    }
-    separatorText("Misc");
-    std::vector<CheckboxGroupEntry> entries {};
-    bool                            forceConsoleChanged {}, loadScreenBoostChanged {}, closeOnEscapeChanged {};
-    bool                            forceConsole    = settings.ForceConsole.get();
-    bool                            loadScreenBoost = settings.LoadScreenBoost.get();
-    bool                            closeOnEscape   = settings.CloseOnEscape.get();
-
-    entries.emplace_back("Console", settings.ForceConsole.description().c_str(), &forceConsole, &forceConsoleChanged);
-    entries.emplace_back(
-        "Loading Boost", settings.LoadScreenBoost.description().c_str(), &loadScreenBoost, &loadScreenBoostChanged);
-    entries.emplace_back(
-        "Esc To Close", settings.CloseOnEscape.description().c_str(), &closeOnEscape, &closeOnEscapeChanged);
-
-    if (unpc::mode == unpc::EMode::Nexus)
-    {
-        goto footer;
-    }
-
-footer:
-    if (checkboxGroup(nullptr, nullptr, entries))
-    {
-        if (forceConsoleChanged)
-        {
-            settings.ForceConsole.set(forceConsole);
-            unpc::logger->setConsole(forceConsole);
-        }
-        if (loadScreenBoostChanged)
-        {
-            settings.LoadScreenBoost.set(loadScreenBoost);
-        }
-        if (closeOnEscapeChanged)
-        {
-            settings.CloseOnEscape.set(closeOnEscape);
-        }
-    }
-    ImGui::NewLine();
-
-    if (unpc::mode == unpc::EMode::Proxy || unpc::mode == unpc::EMode::Injected)
-    {
-        float overlayFontSize = settings.OverlayFontSize.get();
-        if (sliderFloat("Font Size",
-                        "##OverlayFontSize",
-                        overlayFontSize,
-                        10,
-                        20,
-                        "%.0f",
-                        settings.OverlayFontSize.description().c_str()))
-        {
-            settings.OverlayFontSize.set(std::roundf(overlayFontSize));
-        }
-    }
 
     if (ImGui::Button("Force Visibility", {labelOffset + fieldWidth, 30}))
     {
@@ -858,8 +1039,12 @@ footer:
         unpc::hotkeyManager.stopCapturing();
     }
 
-    if (ImGui::TreeNodeEx("Debug Stats", ImGuiTreeNodeFlags_NoTreePushOnOpen))
+    if (ImGui::TreeNodeEx("Stats", ImGuiTreeNodeFlags_NoTreePushOnOpen))
     {
+        ImGui::TextDisabled("Pass: %.1f us · %u models", unpc::passMicrosX10 / 10.0f, unpc::passCharacters);
+        ImGui::TextDisabled("FPS: %.1f", ImGui::GetIO().Framerate);
+        ImGui::NewLine();
+
         if (ImGui::BeginTable("DebugStats", 3, ImGuiTableFlags_SizingFixedFit))
         {
             ImGui::TableSetupColumn("Type");
@@ -885,7 +1070,31 @@ footer:
 
             ImGui::EndTable();
         }
-        ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+
+        ImGui::NewLine();
+        ImGui::TextUnformatted("Hidden by");
+        if (ImGui::BeginTable("HideReasons", 2, ImGuiTableFlags_SizingFixedFit))
+        {
+            ImGui::TableSetupColumn("Rule");
+            ImGui::TableSetupColumn("Count");
+
+            for (size_t i = 0; i < unpc::hideReasonCount; ++i)
+            {
+                const auto count = unpc::hiddenByReason[i];
+                if (count == 0)
+                {
+                    continue;
+                }
+
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::TextUnformatted(unpc::hideReasonName(static_cast<unpc::EHideReason>(i)));
+                ImGui::TableSetColumnIndex(1);
+                ImGui::Text("%u", count);
+            }
+
+            ImGui::EndTable();
+        }
     }
 
 #ifndef BUILDING_ON_GITHUB
@@ -907,6 +1116,7 @@ footer:
     ImGui::SetCursorPosX(ImGui::GetWindowWidth() - textWidth - 2 * ImGui::GetStyle().ItemSpacing.x);
     ImGui::TextUnformatted(version.c_str());
 }
+
 
 static std::atomic_bool ctrlDown {};
 
