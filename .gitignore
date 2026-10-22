@@ -40,3 +40,6 @@ Thumbs.db
 *.dll
 *.exe
 *.out
+
+# MSVC build directory
+build-msvc/

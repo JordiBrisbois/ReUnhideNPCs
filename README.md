@@ -150,6 +150,19 @@ GW2/
 ```
 
 ```sh
+cmake -S ReUnhideNPCs -B ReUnhideNPCs/build-msvc -G "Visual Studio 17 2022" -A x64
+cmake --build ReUnhideNPCs/build-msvc --config Release --parallel
+```
+
+That produces `build-msvc/Release/ReUnhideNPCs.dll` and
+`ReUnhideNPCs_ArcDps.dll` next to their `.pdb` files. Releases are built with
+MSVC, so this is the configuration to use when you want a binary that matches
+what ships; swap the generator for whatever Visual Studio you have installed
+(the workflow uses `Visual Studio 18 2026`).
+
+A GCC/Ninja build works too, and is quicker to iterate on:
+
+```sh
 cmake -S ReUnhideNPCs -B ReUnhideNPCs/build -G Ninja \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++
