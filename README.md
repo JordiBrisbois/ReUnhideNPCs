@@ -172,8 +172,11 @@ cmake --build ReUnhideNPCs/build
 The output is `ReUnhideNPCs/build/ReUnhideNPCs.dll` and
 `ReUnhideNPCs/build/ReUnhideNPCs_ArcDps.dll`.
 
-On GitHub Actions the dependencies are fetched automatically
-(`JordiBrisbois/ReUnhideNPCs-RE` and `server-imp/fw`).
+On GitHub Actions the dependencies are fetched automatically. Both are private
+mirrors pinned to a commit — `ReUnhideNPCs-RE` through `re-commit.txt`, `fw`
+through `UNPC_FW_COMMIT` in `CMakeLists.txt` — so a tag always maps to an exact
+source state, and the build does not depend on an upstream branch that can move
+or disappear.
 
 ## License
 

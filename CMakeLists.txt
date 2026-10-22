@@ -66,11 +66,18 @@ if (BUILDING_ON_GITHUB)
     )
     FetchContent_MakeAvailable(ReUnhideNPCs_RE)
     set(REUNHIDENPCS_RE_SOURCE_DIR "${reunhidenpcs_re_SOURCE_DIR}")
+
+    # fw is fetched from a private mirror at a fixed commit. Upstream is a
+    # single point of failure for the build, and a floating branch would let
+    # two releases built from the same tag compile different framework code.
+    # The mirror is an unmodified copy; see its NOTICE.md.
+    set(UNPC_FW_COMMIT "562b874b099c349c7055510b8c42026d32b7d005" CACHE STRING "fw mirror commit to build against")
+
     FetchContent_Declare(
             fw
-            GIT_REPOSITORY "https://github.com/server-imp/fw.git"
-            GIT_TAG "master"
-            GIT_SHALLOW TRUE
+            GIT_REPOSITORY "https://github.com/JordiBrisbois/ReUnhideNPCs-fw.git"
+            GIT_TAG "${UNPC_FW_COMMIT}"
+            GIT_SHALLOW FALSE
     )
     FetchContent_MakeAvailable(fw)
 else ()
