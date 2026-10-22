@@ -158,8 +158,13 @@ next to this repository:
 GW2/
   ReUnhideNPCs/
   ReUnhideNPCs-RE/
-  fw/
+  ReUnhideNPCs-fw/     optional: the pinned framework releases build against
+  fw/                  fallback: a plain framework checkout
 ```
+
+If `ReUnhideNPCs-fw/` is present it wins, so a local build compiles the same
+framework as a release; `fw/` is only used when it is not. The configure step
+prints which one it picked (`Using fw from ...`).
 
 ```sh
 cmake -S ReUnhideNPCs -B ReUnhideNPCs/build-msvc -G "Visual Studio 17 2022" -A x64

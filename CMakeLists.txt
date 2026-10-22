@@ -75,7 +75,17 @@ if (BUILDING_ON_GITHUB)
     )
     FetchContent_MakeAvailable(fw)
 else ()
-    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../fw ${CMAKE_BINARY_DIR}/_deps/fw-build)
+    # Local builds use the checkouts next to this repository. The pinned mirror
+    # wins when it is there, so a local build compiles the same framework as a
+    # release; a plain fw checkout still works for older layouts.
+    if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../ReUnhideNPCs-fw/CMakeLists.txt)
+        set(UNPC_FW_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../ReUnhideNPCs-fw)
+    else ()
+        set(UNPC_FW_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../fw)
+    endif ()
+
+    message(STATUS "Using fw from ${UNPC_FW_DIR}")
+    add_subdirectory(${UNPC_FW_DIR} ${CMAKE_BINARY_DIR}/_deps/fw-build)
 endif ()
 
 FetchContent_Declare(
