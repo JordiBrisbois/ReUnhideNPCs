@@ -185,8 +185,8 @@ The output is `ReUnhideNPCs/build/ReUnhideNPCs.dll` and
 `ReUnhideNPCs/build/ReUnhideNPCs_ArcDps.dll`.
 
 On GitHub Actions the dependencies are fetched automatically. Both are private
-mirrors pinned to a commit — `ReUnhideNPCs-RE` through `re-commit.txt`, `fw`
-through `UNPC_FW_COMMIT` in `CMakeLists.txt` — so a tag always maps to an exact
+mirrors pinned by commit in `CMakeLists.txt` — `UNPC_RE_COMMIT` for
+`ReUnhideNPCs-RE`, `UNPC_FW_COMMIT` for `fw` — so a tag always maps to an exact
 source state, and the build does not depend on an upstream branch that can move
 or disappear.
 

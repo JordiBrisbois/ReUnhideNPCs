@@ -33,29 +33,12 @@ jobs:
           fi
           echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
 
-      # Every release records the ReUnhideNPCs-RE commit it was built from, so a
-      # tag maps to an exact source state instead of floating on "main".
-      - name: Read pinned RE commit
-        id: re
-        shell: bash
-        run: |
-          if [[ ! -f re-commit.txt ]]; then
-            echo "::error::re-commit.txt is missing: a release must pin the ReUnhideNPCs-RE commit"
-            exit 1
-          fi
-          SHA="$(tr -d '[:space:]' < re-commit.txt)"
-          if [[ ! "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "::error::re-commit.txt must contain a full 40-character commit SHA, got '$SHA'"
-            exit 1
-          fi
-          echo "SHA=$SHA" >> "$GITHUB_OUTPUT"
-          echo "Building against ReUnhideNPCs-RE $SHA"
-
+      # Both private dependencies are pinned in CMakeLists.txt, so a tag maps to
+      # an exact source state instead of floating on a branch.
       - name: Configure CMake
         shell: bash
         run: |
           EXTRA=()
-          EXTRA+=("-DUNPC_RE_COMMIT=${{ steps.re.outputs.SHA }}")
           if [[ -n "${{ steps.tag.outputs.VERSION }}" ]]; then
             EXTRA+=("-DUNPC_VERSION_OVERRIDE=${{ steps.tag.outputs.VERSION }}")
           fi
