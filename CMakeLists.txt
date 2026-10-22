@@ -7,13 +7,17 @@ set(UNPC_VERSION_OVERRIDE "" CACHE STRING "Override the generated version (YYYY.
 
 # CI release builds pin both private dependencies they compile, so a tag maps to
 # an exact source state. Local builds ignore this and use ../ReUnhideNPCs-RE and
-# ../fw, which is where those come from during development.
-set(UNPC_RE_COMMIT "68988396fc1f26920a112c01707cb5045be93bc8" CACHE STRING "ReUnhideNPCs-RE commit to build against")
+# ../ReUnhideNPCs-fw, which is where those come from during development.
+#
+# Plain variables on purpose. As cache entries these kept their previous value
+# when the pin was updated here, which builds the old dependency while the
+# checkout has moved on - a stale local binary that no release resembles.
+set(UNPC_RE_COMMIT "68988396fc1f26920a112c01707cb5045be93bc8")
 
 # fw is a private mirror at a fixed commit: upstream is a single point of
 # failure for the build, and a floating branch would let two releases built from
 # the same tag compile different framework code. See its NOTICE.md.
-set(UNPC_FW_COMMIT "3891573f058bd9aa6cf43bb5c86e6f8168c1b734" CACHE STRING "fw mirror commit to build against")
+set(UNPC_FW_COMMIT "3891573f058bd9aa6cf43bb5c86e6f8168c1b734")
 
 if (UNPC_VERSION_OVERRIDE)
     if (NOT UNPC_VERSION_OVERRIDE MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)$")
