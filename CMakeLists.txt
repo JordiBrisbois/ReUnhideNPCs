@@ -10,6 +10,11 @@ set(UNPC_VERSION_OVERRIDE "" CACHE STRING "Override the generated version (YYYY.
 # ../fw, which is where those come from during development.
 set(UNPC_RE_COMMIT "68988396fc1f26920a112c01707cb5045be93bc8" CACHE STRING "ReUnhideNPCs-RE commit to build against")
 
+# fw is a private mirror at a fixed commit: upstream is a single point of
+# failure for the build, and a floating branch would let two releases built from
+# the same tag compile different framework code. See its NOTICE.md.
+set(UNPC_FW_COMMIT "3891573f058bd9aa6cf43bb5c86e6f8168c1b734" CACHE STRING "fw mirror commit to build against")
+
 if (UNPC_VERSION_OVERRIDE)
     if (NOT UNPC_VERSION_OVERRIDE MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)\\.([0-9]+)$")
         message(FATAL_ERROR "UNPC_VERSION_OVERRIDE must be YYYY.M.D.HHMM, got '${UNPC_VERSION_OVERRIDE}'")
@@ -61,12 +66,6 @@ if (BUILDING_ON_GITHUB)
     FetchContent_MakeAvailable(ReUnhideNPCs_RE)
     set(REUNHIDENPCS_RE_SOURCE_DIR "${reunhidenpcs_re_SOURCE_DIR}")
 
-    # fw is fetched from a private mirror at a fixed commit. Upstream is a
-    # single point of failure for the build, and a floating branch would let
-    # two releases built from the same tag compile different framework code.
-    # The mirror is an unmodified copy; see its NOTICE.md.
-    set(UNPC_FW_COMMIT "21d8674e63538e6ee87cffc40502a227f7a07bfb" CACHE STRING "fw mirror commit to build against")
-
     FetchContent_Declare(
             fw
             GIT_REPOSITORY "https://github.com/JordiBrisbois/ReUnhideNPCs-fw.git"
@@ -80,6 +79,24 @@ else ()
     # release; a plain fw checkout still works for older layouts.
     if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../ReUnhideNPCs-fw/CMakeLists.txt)
         set(UNPC_FW_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../ReUnhideNPCs-fw)
+
+        # A local build has to compile the same framework as a release, or a bug
+        # reproduced locally is not the bug that ships. Say so when the checkout
+        # and the pin disagree instead of leaving it to be noticed later.
+        find_package(Git QUIET)
+        if (GIT_FOUND AND EXISTS ${UNPC_FW_DIR}/.git)
+            execute_process(
+                    COMMAND ${GIT_EXECUTABLE} -C ${UNPC_FW_DIR} rev-parse HEAD
+                    OUTPUT_VARIABLE UNPC_FW_CHECKED_OUT
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+                    ERROR_QUIET)
+
+            if (UNPC_FW_CHECKED_OUT AND NOT UNPC_FW_CHECKED_OUT STREQUAL UNPC_FW_COMMIT)
+                message(WARNING
+                        "ReUnhideNPCs-fw is checked out at ${UNPC_FW_CHECKED_OUT}, but releases build "
+                        "${UNPC_FW_COMMIT}. Pull the framework or bump UNPC_FW_COMMIT.")
+            endif ()
+        endif ()
     else ()
         set(UNPC_FW_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../fw)
     endif ()
