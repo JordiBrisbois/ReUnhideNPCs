@@ -12,9 +12,9 @@ GPLv3; this fork remains GPLv3.
 
 ## Notes
 
-The add-on is built against the Guild Wars 2 client structures recovered from the
-original release. A game update that changes those structures requires updating
-`ReUnhideNPCs-RE`.
+The add-on targets a specific game build. A game update can change the data it
+relies on; if that happens it disables itself and says so in the log and in the
+options window, and a matching add-on build is needed for the new client.
 
 ## In-Game Configuration
 
@@ -59,35 +59,47 @@ Logs are written to `<game folder>/addons/ReUnhideNPCs/reunhidenpcs.log`.
 
 ## Fixes over the original release
 
-- **Frame cost**: the 50 ms character pass no longer asks the kernel whether
-  every pointer it resolves is readable (~1400 `VirtualQuery` calls per pass in
-  a crowded WvW map, 4-5 ms on the render thread). Client memory is read
-  directly and recovered from if the page is gone, so the add-on keeps the
-  safety that check was providing without paying for it. The pass now measures
-  a few microseconds with 220 characters.
-- **DebugLog** (off by default) writes the client pattern scan and the
-  memory-read diagnostics to the log. Turn it on when reporting a problem.
+- **Frame cost**: the character pass used to cost 4-5 ms of CPU every update in
+  a crowded WvW map, which is enough to drop a frame and show up as a 58-59 FPS
+  wobble. It measures a few microseconds now, so the add-on does not compete
+  with rendering.
+- **Stats panel**: the options window shows what the pass costs (µs, model
+  count, FPS) and which rules hid how many characters on the current pass, so
+  you can see what a profile actually does instead of guessing which checkbox
+  is working.
+- **Options window**: collapsible sections (`Show`, `Models`, `Hide`, `Limits`,
+  `Misc`) and a search box that filters the settings and opens the matching
+  section.
+- **Safety check**: if a game update ever makes the add-on's assumptions wrong,
+  it disables itself and says so in the log and the options window, instead of
+  hiding the wrong characters or writing somewhere it should not.
+- **DebugLog** (off by default) writes detailed diagnostics to the log. Turn it
+  on when reporting a problem.
 - **Player-Owned / All** now also hides characters owned by the local player; `Mine` remains available when `All` is disabled.
 - **Always Show My Owned** (enabled by default) makes your own pets, clones,
   minis and jade mech bypass every hide option: `All`, `Mine`, `Max
   Player-Owned`, `Non-Friends` and off-screen culling. It is evaluated before
   all other hide rules.
-- **Hide off-screen crash**: the world-to-screen routine was called with a
-  renderer pointer that could already have been released. ReUnhideNPCs installs
-  a detour on the renderer's deleting destructor (vtable slot 0) and clears the
-  saved pointer when the renderer is destroyed. `isOnScreen()` treats an
-  unknown renderer as "on screen" (keeps characters visible), and a one-second
-  freshness guard ignores a saved pointer that has not been refreshed by the
-  render hook, so a freed renderer is never dereferenced. The options window
-  shows live off-screen decision/confirmation counters next to the checkbox.
+- **Always Show Attackable** keeps anything you can attack on screen — hostile
+  players and NPCs — whatever the other hide rules say.
+- **Hide off-screen no longer misbehaves**: the off-screen test used to keep a
+  reference to a renderer that the game had already recreated, which could
+  leave characters hidden after a map change or crash the client.
+  ReUnhideNPCs now drops that reference as soon as the renderer goes away and
+  treats characters as visible until it has a valid one again. The off-screen
+  counters next to the checkbox show what the current pass decided.
 - **Always Show Group / Friends** keep party, squad and friend players visible
   even when `Max Players`, `Hide All` or off-screen culling would hide them.
 - **Off-Screen Keep** and **Off-Screen Grace** expose the previous hardcoded
   12 m near-distance and 5 s grace period.
 - **Nearest First** (enabled by default) makes `Max Players`, `Max
   Player-Owned` and `Max NPCs` keep the closest characters instead of the first
-  entries in the game's LOD list. It has no effect when every maximum is
+  entries in the game's character list. It has no effect when every maximum is
   unlimited, and always-shown entries still count toward the maximum.
+- **Rank First** does the same for NPCs by rank instead of distance: with
+  `Max NPCs` active, bosses and champions are kept before ordinary trash.
+- **Basic Beyond** switches characters past a distance to basic models while
+  leaving them visible, so a distant crowd costs less without disappearing.
 
 ## Verifying Hide Off-Screen
 
@@ -97,7 +109,7 @@ areas.
 
 - Next to `Hide Off-Screen`, `(N off-screen, M confirmed hidden)` shows the
   current pass: `N` = characters classified off-screen and hidden by the rule,
-  `M` = those whose model is actually in the hidden LOD state (`dwLodState == 2`).
+  `M` = those the game is really no longer drawing.
 - Test in a crowded area with targets farther than the configured
   `Off-Screen Keep` distance (default 12 m): turn the camera away. After the
   `Off-Screen Grace` period (default 5 s), `N` and `M` rise; turn back and they
@@ -105,8 +117,8 @@ areas.
 - Toggle `Hide Off-Screen` off: the same characters reappear and the counters
   go to zero.
 - `Always Show My Owned` entries never count: they bypass the rule.
-- If the render hook is unavailable or the renderer is stale, the addon treats
-  the character as visible instead of hiding it.
+- If the add-on cannot tell where a character is on screen, it keeps it visible
+  instead of hiding it.
 
 ## Releases
 
