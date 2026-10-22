@@ -229,6 +229,13 @@ static bool initialize()
         logger->setConsole(true);
     }
 
+    // Resolving the client patterns is reverse-engineering detail, not something
+    // a user needs in their log. Everything below this point runs quietly
+    // unless verbose logging is enabled; the level is restored before returning
+    // so normal messages keep their level.
+    const auto normalLevel = settings->DebugLog.get() ? logging::LogLevel::Debug : logging::LogLevel::Info;
+    logger->setLevel(settings->DebugLog.get() ? logging::LogLevel::Debug : logging::LogLevel::Warning);
+
     Module game {};
     if (!Module::tryGetByName("Gw2-64.exe", game))
     {
@@ -325,6 +332,8 @@ static bool initialize()
     initializeHotkeys();
     game.clear();
 
+    logger->setLevel(normalLevel);
+
     return true;
 }
 
@@ -342,6 +351,17 @@ void unpc::onHookTick()
 
     hotkeyManager.update();
     settings->save();
+
+    // Apply the verbose setting without waiting for a restart. The RE layer
+    // logs its own diagnostics at debug level, so this is what makes them
+    // visible when someone is chasing a problem.
+    static bool verboseLog = false;
+    if (logger && settings->DebugLog.get() != verboseLog)
+    {
+        verboseLog = settings->DebugLog.get();
+        logger->setLevel(verboseLog ? logging::LogLevel::Debug : logging::LogLevel::Info);
+        LOG_INFO("Log level: {}", verboseLog ? "debug" : "info");
+    }
 
     if (mode != EMode::Injected && mode != EMode::Proxy)
     {

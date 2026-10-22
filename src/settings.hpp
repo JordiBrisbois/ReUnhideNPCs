@@ -223,6 +223,12 @@ public:
       "Create a console window.\nNote: If the console window is exited, then the game will exit as well.");
 
     S(bool,
+      DebugLog,
+      false,
+      "Write detailed diagnostics to the log (memory reads, pattern resolution). Only needed when reporting a "
+      "problem - it makes the log much longer.");
+
+    S(bool,
       LoadScreenBoost,
       true,
       "Speed up loading screens by temporarily limiting number of characters to 0 when one is triggered.\nNote: This "
