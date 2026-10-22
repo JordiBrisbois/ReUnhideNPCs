@@ -79,6 +79,30 @@ jobs:
             "TAG=v$version" >> $env:GITHUB_OUTPUT
           }
 
+      # GitHub's generated notes only list pull requests, and this project is
+      # built from direct pushes, so the release page would otherwise carry
+      # nothing but a compare link. Take the section that matches the tag from
+      # CHANGELOG.md instead, and fall back to the generated notes when the tag
+      # has no section yet.
+      - name: Read the matching CHANGELOG section
+        id: notes
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          awk -v heading="## v$VERSION" '
+            index($0, heading) == 1 { found = 1; next }
+            found && index($0, "## ") == 1 { exit }
+            found { print }
+          ' CHANGELOG.md > release-notes.md
+
+          if [ -s release-notes.md ]; then
+            echo "path=release-notes.md" >> "$GITHUB_OUTPUT"
+            echo "Using the CHANGELOG.md section for v$VERSION"
+          else
+            echo "path=" >> "$GITHUB_OUTPUT"
+            echo "::warning::CHANGELOG.md has no section for v$VERSION, using generated notes"
+          fi
+
       - name: Verify release assets
         shell: pwsh
         run: |
@@ -110,7 +134,8 @@ jobs:
           name: ${{ steps.version.outputs.TAG }}
           target_commitish: ${{ github.sha }}
           draft: ${{ github.event_name == 'workflow_dispatch' }}
-          generate_release_notes: true
+          body_path: ${{ steps.notes.outputs.path }}
+          generate_release_notes: ${{ steps.notes.outputs.path == '' }}
           fail_on_unmatched_files: true
           files: |
             build/Release/ReUnhideNPCs.dll

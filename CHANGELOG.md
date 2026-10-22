@@ -5,7 +5,7 @@ Releases are also published on the
 GitHub generates from the commits since the previous tag. This file says what
 changed for people using the add-on.
 
-## v2026.10.22.1640
+## v2026.10.22.1640 - 2026-10-22
 
 ### Performance
 
