@@ -59,12 +59,14 @@ Logs are written to `<game folder>/addons/ReUnhideNPCs/reunhidenpcs.log`.
 
 ## Fixes over the original release
 
-- **Frame cost**: the 50 ms character pass no longer issues a `VirtualQuery`
-  for every pointer it resolves (~1400 syscalls per pass in a crowded WvW map,
-  4-5 ms on the render thread). Client reads are fault-guarded instead, which
-  costs one load per pointer and cannot dereference a released page. The pass
-  measures a few microseconds with 220 characters. See
-  [PERFORMANCE.md](https://github.com/JordiBrisbois/ReUnhideNPCs-RE/blob/main/PERFORMANCE.md).
+- **Frame cost**: the 50 ms character pass no longer asks the kernel whether
+  every pointer it resolves is readable (~1400 `VirtualQuery` calls per pass in
+  a crowded WvW map, 4-5 ms on the render thread). Client memory is read
+  directly and recovered from if the page is gone, so the add-on keeps the
+  safety that check was providing without paying for it. The pass now measures
+  a few microseconds with 220 characters.
+- **DebugLog** (off by default) writes the client pattern scan and the
+  memory-read diagnostics to the log. Turn it on when reporting a problem.
 - **Player-Owned / All** now also hides characters owned by the local player; `Mine` remains available when `All` is disabled.
 - **Always Show My Owned** (enabled by default) makes your own pets, clones,
   minis and jade mech bypass every hide option: `All`, `Mine`, `Max
