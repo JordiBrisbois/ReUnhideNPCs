@@ -222,6 +222,15 @@ public:
       "rank.")
         .onChanged(forceInvisibility);
 
+    // Handing the characters back to the client is done by the tick itself when
+    // this value changes (see the pause handling in the character tick), so it
+    // does not need the usual forceInvisibility() hook.
+    S(bool,
+      DisableInCompetitive,
+      true,
+      "Turn the add-on off in competitive modes (World vs World and PvP).\nCharacters keep the game's normal visibility "
+      "there, and no hide rule applies until you leave. Untick this to use the add-on in those modes anyway.");
+
     S(int32_t, InstanceBehaviour, 0, "0: Always On\n1: Disabled in instances\n2: Instances only")
         .onChanged(forceInvisibility)
         .validator(

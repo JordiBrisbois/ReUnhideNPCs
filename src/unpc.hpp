@@ -110,6 +110,25 @@ namespace unpc
     // leaves the client alone instead of writing to the wrong fields.
     extern bool clientLayoutOk;
 
+    // Why the add-on is currently leaving characters alone, if it is. Written by
+    // the character tick on every run and read by the overlay, so the window can
+    // say why nothing happens instead of looking broken.
+    enum class EPauseReason : uint32_t
+    {
+        None = 0,
+        Instance,
+        Competitive
+    };
+
+    extern EPauseReason pauseReason;
+
+    // One-line explanation of a pause reason, for the overlay.
+    const char* pauseReasonText(EPauseReason reason);
+
+    // Clears the per-pass figures (cost, counts, hide reasons) so the overlay
+    // does not keep showing the numbers of the map the add-on just left.
+    void resetPassStats();
+
     struct DebugRenderEntry
     {
         vec2        screenPos;

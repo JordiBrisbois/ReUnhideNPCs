@@ -5,6 +5,21 @@ Releases are also published on the
 GitHub generates from the commits since the previous tag. This file says what
 changed for people using the add-on.
 
+## v2026.10.23.1926 - 2026-10-23
+
+### Added
+
+- **Disable in Competitive** (enabled by default): the add-on does nothing in
+  World vs World and PvP. Characters keep the game's own visibility there, so
+  the add-on cannot be read as an advantage in modes where other players are
+  affected. Untick it under `Misc` to use the add-on there anyway.
+
+### Changed
+
+- The options window now says why it is doing nothing: a competitive map and
+  the `Instance Behaviour` setting both show a line above the settings, and the
+  log records when the add-on pauses and resumes.
+
 ## v2026.10.22.1820 - 2026-10-22
 
 ### Added

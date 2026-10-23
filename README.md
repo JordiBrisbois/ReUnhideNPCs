@@ -70,6 +70,11 @@ Logs are written to `<game folder>/addons/ReUnhideNPCs/reunhidenpcs.log`.
 - **Options window**: collapsible sections (`Show`, `Models`, `Hide`, `Limits`,
   `Misc`) and a search box that filters the settings and opens the matching
   section.
+- **Disable in Competitive** (enabled by default) leaves World vs World and PvP
+  alone: characters keep the game's own visibility there, so the add-on cannot
+  be read as giving you an advantage over other players. Untick it in `Misc` to
+  use the add-on in those modes anyway. The options window says when it is
+  paused, and the log records when it pauses and resumes.
 - **Safety check**: if a game update ever makes the add-on's assumptions wrong,
   it disables itself and says so in the log and the options window, instead of
   hiding the wrong characters or writing somewhere it should not.

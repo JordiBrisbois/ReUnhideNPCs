@@ -442,6 +442,15 @@ void ui::renderOptions()
         ImGui::NewLine();
     }
 
+    if (unpc::pauseReason != unpc::EPauseReason::None)
+    {
+        // An add-on that does nothing looks broken; say why it is doing nothing.
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.72f, 0.30f, 1.0f));
+        ImGui::TextWrapped("%s", unpc::pauseReasonText(unpc::pauseReason));
+        ImGui::PopStyleColor();
+        ImGui::NewLine();
+    }
+
     renderProfileOptions();
     ImGui::NewLine();
 
@@ -956,7 +965,7 @@ void ui::renderOptions()
         }
     }
 
-    if (matches("misc console loading escape font instance behaviour"))
+    if (matches("misc console loading escape font instance competitive wvw pvp"))
     {
         if (section("Misc"))
         {
@@ -971,6 +980,18 @@ void ui::renderOptions()
                           profile.InstanceBehaviour.description().c_str()))
                 {
                     profile.InstanceBehaviour.set(instanceBehaviour);
+                }
+            }
+
+            if (matches("competitive wvw pvp"))
+            {
+                bool disableInCompetitive = profile.DisableInCompetitive.get();
+                if (checkbox("Disable In Competitive",
+                             "##competitive",
+                             disableInCompetitive,
+                             profile.DisableInCompetitive.description().c_str()))
+                {
+                    profile.DisableInCompetitive.set(disableInCompetitive);
                 }
             }
 

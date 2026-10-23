@@ -52,6 +52,7 @@ std::array<uint32_t, unpc::hideReasonCount> unpc::hiddenByReason {};
 uint32_t                                 unpc::passMicrosX10 {};
 uint32_t                                 unpc::passCharacters {};
 bool                                     unpc::clientLayoutOk { true };
+unpc::EPauseReason                       unpc::pauseReason { unpc::EPauseReason::None };
 
 const char* unpc::hideReasonName(const EHideReason reason)
 {
@@ -114,6 +115,41 @@ const char* unpc::hideReasonName(const EHideReason reason)
     }
 
     return "?";
+}
+
+const char* unpc::pauseReasonText(const EPauseReason reason)
+{
+    switch (reason)
+    {
+    case EPauseReason::None:
+        return "";
+    case EPauseReason::Instance:
+        return "Paused: the Instance Behaviour option keeps the add-on off in this map.";
+    case EPauseReason::Competitive:
+        return "Paused: you are in a competitive mode (WvW or PvP), where the add-on is off by default. Characters "
+               "keep the game's own visibility. Untick \"Disable in Competitive\" in Misc to use it here.";
+    }
+
+    return "";
+}
+
+void unpc::resetPassStats()
+{
+    passMicrosX10  = 0;
+    passCharacters = 0;
+
+    numPlayersVisible     = 0;
+    numPlayersCulled      = 0;
+    numMountsVisible      = 0;
+    numMountsCulled       = 0;
+    numPlayerOwnedVisible = 0;
+    numPlayerOwnedCulled  = 0;
+    numOffScreenCulled    = 0;
+    numOffScreenConfirmed = 0;
+    numNPCVisible         = 0;
+    numNPCCulled          = 0;
+
+    hiddenByReason.fill(0);
 }
 
 std::shared_mutex             unpc::debugRenderMutex {};

@@ -41,8 +41,9 @@ struct MumbleContext
     uint32_t      buildId;
     // Additional data beyond the <context_len> bytes the game instructs Mumble to use to distinguish between instances.
     uint32_t      uiState;
-    // Bitmask: Bit 1 = IsMapOpen, Bit 2 = IsCompassTopRight, Bit 3 = DoesCompassHaveRotationEnabled, Bit 4 = Game has
-    // focus, Bit 5 = Is in Competitive game mode, Bit 6 = Textbox has focus, Bit 7 = Is in Combat
+    // Bitmask, numbered from 1 as in the game's documentation: Bit 1 = IsMapOpen, Bit 2 = IsCompassTopRight, Bit 3 =
+    // DoesCompassHaveRotationEnabled, Bit 4 = Game has focus, Bit 5 = Is in Competitive game mode, Bit 6 = Textbox has
+    // focus, Bit 7 = Is in Combat. So bit 5 is (1 << 4) below, bit 6 is (1 << 5), bit 7 is (1 << 6).
     uint16_t      compassWidth;    // pixels
     uint16_t      compassHeight;   // pixels
     float         compassRotation; // radians
@@ -82,6 +83,36 @@ struct MumbleContext
     [[nodiscard]] bool isInCombat() const
     {
         return uiState & (1 << 6);
+    }
+
+    // True while the player is in a mode where the add-on can give an
+    // advantage over other players: World vs World and structured PvP. The
+    // game flags it directly in uiState, and the map type is used as a fallback
+    // because the flag is not set for every map of a mode (the Edge of the
+    // Mists, for example).
+    [[nodiscard]] bool isCompetitiveMode() const
+    {
+        if ((uiState & (1u << 4)) != 0)
+        {
+            return true;
+        }
+
+        switch (mapType)
+        {
+        case EMapType::CompetitivePvP:
+        case EMapType::GvG:
+        case EMapType::Tournament:
+        case EMapType::UserTournament:
+        case EMapType::EternalBattlegrounds:
+        case EMapType::BlueBorderlands:
+        case EMapType::GreenBorderlands:
+        case EMapType::RedBorderlands:
+        case EMapType::EdgeOfTheMists:
+        case EMapType::BigBattle:
+            return true;
+        default:
+            return false;
+        }
     }
 };
 

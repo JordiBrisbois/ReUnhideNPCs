@@ -12,7 +12,7 @@ set(UNPC_VERSION_OVERRIDE "" CACHE STRING "Override the generated version (YYYY.
 # Plain variables on purpose. As cache entries these kept their previous value
 # when the pin was updated here, which builds the old dependency while the
 # checkout has moved on - a stale local binary that no release resembles.
-set(UNPC_RE_COMMIT "68988396fc1f26920a112c01707cb5045be93bc8")
+set(UNPC_RE_COMMIT "1c2b519f040555f2b73400c6b307ed67ae8d9b5c")
 
 # fw is a private mirror at a fixed commit: upstream is a single point of
 # failure for the build, and a floating branch would let two releases built from
